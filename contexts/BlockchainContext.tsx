@@ -37,6 +37,24 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     completedQuests: [] as string[],
   });
 
+  const loadUserStats = async () => {
+    try {
+      const [xpStr, levelStr, questsStr] = await AsyncStorage.multiGet([
+        'userXP',
+        'userLevel',
+        'completedQuests'
+      ]);
+      
+      const xp = xpStr[1] ? parseInt(xpStr[1]) : 2847;
+      const level = levelStr[1] ? parseInt(levelStr[1]) : 12;
+      const completedQuests = questsStr[1] ? JSON.parse(questsStr[1]) : [];
+      
+      setUserStats({ xp, level, completedQuests });
+    } catch (error) {
+      console.error('Failed to load user stats:', error);
+    }
+  };
+
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -49,24 +67,6 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error);
-      }
-    };
-
-    const loadUserStats = async () => {
-      try {
-        const [xpStr, levelStr, questsStr] = await AsyncStorage.multiGet([
-          'userXP',
-          'userLevel',
-          'completedQuests'
-        ]);
-        
-        const xp = xpStr[1] ? parseInt(xpStr[1]) : 2847;
-        const level = levelStr[1] ? parseInt(levelStr[1]) : 12;
-        const completedQuests = questsStr[1] ? JSON.parse(questsStr[1]) : [];
-        
-        setUserStats({ xp, level, completedQuests });
-      } catch (error) {
-        console.error('Failed to load user stats:', error);
       }
     };
 
