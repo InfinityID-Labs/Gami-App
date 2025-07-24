@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { BlockchainProvider, useBlockchain } from '@/contexts/BlockchainContext';
+import { BlockchainProvider } from '@/contexts/BlockchainContext';
 
 export default function RootLayout() {
   useFrameworkReady();
