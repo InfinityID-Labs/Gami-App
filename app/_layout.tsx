@@ -19,6 +19,8 @@ function useProtectedRoute() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!router.isReady) return;
+
     const inAuthGroup = segments[0] === '(auth)';
     const inTabsGroup = segments[0] === '(tabs)';
 
@@ -29,7 +31,7 @@ function useProtectedRoute() {
       // Redirect to tabs if authenticated and in auth screens
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, segments]);
+  }, [isAuthenticated, segments, router.isReady]);
 }
 
 function AppContent() {
