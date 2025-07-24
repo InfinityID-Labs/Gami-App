@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useBlockchain } from '@/contexts/BlockchainContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Quest {
   id: string;
