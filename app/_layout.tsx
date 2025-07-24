@@ -3,7 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { BlockchainProvider, useBlockchain } from '@/contexts/BlockchainContext';
-import { useRouter, useSegments } from 'expo-router';
+import { useRouter, useSegments, useRootNavigationState } from 'expo-router';
 
 // Mock environment variables - replace with actual values
 const ENV_VARS = {
@@ -17,9 +17,11 @@ function useProtectedRoute() {
   const { isAuthenticated } = useBlockchain();
   const segments = useSegments();
   const router = useRouter();
+  const navigationState = useRootNavigationState();
 
   useEffect(() => {
-    if (!router.isReady) return;
+    // Wait for navigation state to be ready
+    if (!navigationState?.key) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inTabsGroup = segments[0] === '(tabs)';
@@ -31,7 +33,7 @@ function useProtectedRoute() {
       // Redirect to tabs if authenticated and in auth screens
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, segments, router.isReady]);
+  }, [isAuthenticated, segments, navigationState?.key]);
 }
 
 function AppContent() {
