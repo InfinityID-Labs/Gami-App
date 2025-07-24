@@ -43,6 +43,14 @@ export default function QuestsScreen() {
   const { wallet, completeQuestOnChain } = useBlockchain();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
+  const [userXP, setUserXP] = useState(2847);
+  const [userLevel, setUserLevel] = useState(12);
+  const [completedQuests, setCompletedQuests] = useState<string[]>([]);
+  const [liveStats, setLiveStats] = useState({
+    totalEarned: 0,
+    questsCompleted: 0,
+    currentStreak: 0,
+  });
 
   const quests: Quest[] = [
     {
