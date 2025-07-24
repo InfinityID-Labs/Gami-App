@@ -203,7 +203,6 @@ export default function QuestsScreen() {
         // Simulate quest completion for non-blockchain quests
         const newXP = userXP + quest.xpReward;
         const newLevel = Math.floor(newXP / 1000) + 1;
-        const newCompletedQuests = [...completedQuests, quest.id];
         const newLiveStats = {
           totalEarned: liveStats.totalEarned + (quest.moneyReward || 0),
           questsCompleted: liveStats.questsCompleted + 1,
@@ -212,10 +211,10 @@ export default function QuestsScreen() {
         
         setUserXP(newXP);
         setUserLevel(newLevel);
-        setCompletedQuests(newCompletedQuests);
+        setCompletedQuests(prev => [...prev, quest.id]);
         
         // Save all data
-        await updateUserStats(newXP, newLevel, newCompletedQuests);
+        await updateUserStats(newXP, newLevel, [...completedQuests, quest.id]);
         await saveLiveStats(newLiveStats);
         Alert.alert(
           'Quest Completed! ⚡',
