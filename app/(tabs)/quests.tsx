@@ -210,13 +210,6 @@ export default function QuestsScreen() {
           currentStreak: liveStats.currentStreak + 1,
         };
         
-        const newCompletedQuests = [...completedQuests, quest.id];
-        const newLiveStats = {
-          totalEarned: liveStats.totalEarned + (quest.moneyReward || 0),
-          questsCompleted: liveStats.questsCompleted + 1,
-          currentStreak: liveStats.currentStreak + 1,
-        };
-        
         setUserXP(newXP);
         setUserLevel(newLevel);
         setCompletedQuests(newCompletedQuests);

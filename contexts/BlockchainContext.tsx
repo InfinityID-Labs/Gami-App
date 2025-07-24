@@ -38,41 +38,42 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        await icpService.initialize();
+        const storedAuth = await icpService.getStoredAuth();
+        setAuthState(storedAuth);
+        
+        if (storedAuth.isAuthenticated) {
+          await loadWalletData(storedAuth.principal!);
+        }
+      } catch (error) {
+        console.error('Failed to initialize auth:', error);
+      }
+    };
+
+    const loadUserStats = async () => {
+      try {
+        const [xpStr, levelStr, questsStr] = await AsyncStorage.multiGet([
+          'userXP',
+          'userLevel',
+          'completedQuests'
+        ]);
+        
+        const xp = xpStr[1] ? parseInt(xpStr[1]) : 2847;
+        const level = levelStr[1] ? parseInt(levelStr[1]) : 12;
+        const completedQuests = questsStr[1] ? JSON.parse(questsStr[1]) : [];
+        
+        setUserStats({ xp, level, completedQuests });
+      } catch (error) {
+        console.error('Failed to load user stats:', error);
+      }
+    };
+
     initializeAuth();
     loadUserStats();
   }, []);
 
-  const initializeAuth = async () => {
-    try {
-      await icpService.initialize();
-      const storedAuth = await icpService.getStoredAuth();
-      setAuthState(storedAuth);
-      
-      if (storedAuth.isAuthenticated) {
-        await loadWalletData(storedAuth.principal!);
-      }
-    } catch (error) {
-      console.error('Failed to initialize auth:', error);
-    }
-  };
-
-  const loadUserStats = async () => {
-    try {
-      const [xpStr, levelStr, questsStr] = await AsyncStorage.multiGet([
-        'userXP',
-        'userLevel',
-        'completedQuests'
-      ]);
-      
-      const xp = xpStr[1] ? parseInt(xpStr[1]) : 2847;
-      const level = levelStr[1] ? parseInt(levelStr[1]) : 12;
-      const completedQuests = questsStr[1] ? JSON.parse(questsStr[1]) : [];
-      
-      setUserStats({ xp, level, completedQuests });
-    } catch (error) {
-      console.error('Failed to load user stats:', error);
-    }
-  };
 
   const saveUserStats = async (xp: number, level: number, completedQuests: string[]) => {
     try {
