@@ -40,7 +40,7 @@ interface Quest {
 }
 
 export default function QuestsScreen() {
-  const { wallet, completeQuestOnChain } = useBlockchain();
+  const { wallet, completeQuestOnChain, getUserStats, updateUserStats } = useBlockchain();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [userXP, setUserXP] = useState(2847);
@@ -52,6 +52,35 @@ export default function QuestsScreen() {
     currentStreak: 0,
   });
 
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const stats = await getUserStats();
+      setUserXP(stats.xp);
+      setUserLevel(stats.level);
+      setCompletedQuests(stats.completedQuests);
+      
+      // Load live stats from storage
+      const storedStats = await AsyncStorage.getItem('liveStats');
+      if (storedStats) {
+        setLiveStats(JSON.parse(storedStats));
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
+  };
+
+  const saveLiveStats = async (newStats: typeof liveStats) => {
+    try {
+      await AsyncStorage.setItem('liveStats', JSON.stringify(newStats));
+      setLiveStats(newStats);
+    } catch (error) {
+      console.error('Failed to save live stats:', error);
+    }
+  };
   const quests: Quest[] = [
     {
       id: '1',
@@ -174,15 +203,27 @@ export default function QuestsScreen() {
         // Simulate quest completion for non-blockchain quests
         const newXP = userXP + quest.xpReward;
         const newLevel = Math.floor(newXP / 1000) + 1;
+        const newCompletedQuests = [...completedQuests, quest.id];
+        const newLiveStats = {
+          totalEarned: liveStats.totalEarned + (quest.moneyReward || 0),
+          questsCompleted: liveStats.questsCompleted + 1,
+          currentStreak: liveStats.currentStreak + 1,
+        };
+        
+        const newCompletedQuests = [...completedQuests, quest.id];
+        const newLiveStats = {
+          totalEarned: liveStats.totalEarned + (quest.moneyReward || 0),
+          questsCompleted: liveStats.questsCompleted + 1,
+          currentStreak: liveStats.currentStreak + 1,
+        };
+        
         setUserXP(newXP);
         setUserLevel(newLevel);
-        setCompletedQuests(prev => [...prev, quest.id]);
-        setLiveStats(prev => ({
-          totalEarned: prev.totalEarned + (quest.moneyReward || 0),
-          questsCompleted: prev.questsCompleted + 1,
-          currentStreak: prev.currentStreak + 1,
-        }));
-
+        setCompletedQuests(newCompletedQuests);
+        
+        // Save all data
+        await updateUserStats(newXP, newLevel, newCompletedQuests);
+        await saveLiveStats(newLiveStats);
         Alert.alert(
           'Quest Completed! ⚡',
           `Excellent work! You've earned:\n\n+${quest.xpReward} XP${quest.moneyReward ? `\n+$${quest.moneyReward}` : ''}\n\nTotal XP: ${newXP}\nLevel: ${newLevel}`,

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { icpService, ICPAuthState } from '@/services/icpService';
 import { UserWallet, BlockchainTransaction } from '@/types/blockchain';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface BlockchainContextType {
   isAuthenticated: boolean;
@@ -15,6 +16,8 @@ interface BlockchainContextType {
   disconnectWallet: () => void;
   refreshBalance: () => Promise<void>;
   completeQuestOnChain: (questId: string) => Promise<boolean>;
+  getUserStats: () => Promise<{ xp: number; level: number; completedQuests: string[] }>;
+  updateUserStats: (xp: number, level: number, completedQuests: string[]) => Promise<void>;
 }
 
 const BlockchainContext = createContext<BlockchainContextType | undefined>(undefined);
@@ -28,9 +31,15 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
   const [wallet, setWallet] = useState<UserWallet | null>(null);
   const [transactions, setTransactions] = useState<BlockchainTransaction[]>([]);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [userStats, setUserStats] = useState({
+    xp: 2847,
+    level: 12,
+    completedQuests: [] as string[],
+  });
 
   useEffect(() => {
     initializeAuth();
+    loadUserStats();
   }, []);
 
   const initializeAuth = async () => {
@@ -47,44 +56,79 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loadUserStats = async () => {
+    try {
+      const [xpStr, levelStr, questsStr] = await AsyncStorage.multiGet([
+        'userXP',
+        'userLevel',
+        'completedQuests'
+      ]);
+      
+      const xp = xpStr[1] ? parseInt(xpStr[1]) : 2847;
+      const level = levelStr[1] ? parseInt(levelStr[1]) : 12;
+      const completedQuests = questsStr[1] ? JSON.parse(questsStr[1]) : [];
+      
+      setUserStats({ xp, level, completedQuests });
+    } catch (error) {
+      console.error('Failed to load user stats:', error);
+    }
+  };
+
+  const saveUserStats = async (xp: number, level: number, completedQuests: string[]) => {
+    try {
+      await AsyncStorage.multiSet([
+        ['userXP', xp.toString()],
+        ['userLevel', level.toString()],
+        ['completedQuests', JSON.stringify(completedQuests)]
+      ]);
+      setUserStats({ xp, level, completedQuests });
+    } catch (error) {
+      console.error('Failed to save user stats:', error);
+    }
+  };
   const loadWalletData = async (principal: string) => {
     try {
-      const mockWallet: UserWallet = {
+      // Generate dynamic token balances based on user progress
+      const baseBalance = userStats.xp * 0.05; // 5 cents per XP
+      const tokenMultiplier = userStats.level * 10;
+      
+      const liveWallet: UserWallet = {
         principal,
         address: principal.slice(0, 8) + '...',
-        balance: 156.75,
+        balance: baseBalance + (userStats.completedQuests.length * 5),
         network: 'ICP',
         connected: true,
         tokens: [
-          { symbol: 'GAMI', name: 'Gami Token', balance: 250, value: 0.50, canisterId: 'gami-token' },
-          { symbol: 'QUEST', name: 'Quest Token', balance: 100, value: 0.25, canisterId: 'quest-token' },
-          { symbol: 'LOCAL', name: 'Local Rewards', balance: 75, value: 0.10, canisterId: 'local-token' },
+          { 
+            symbol: 'GAMI', 
+            name: 'Gami Token', 
+            balance: tokenMultiplier + (userStats.completedQuests.length * 10), 
+            value: 0.50, 
+            canisterId: 'gami-token' 
+          },
+          { 
+            symbol: 'QUEST', 
+            name: 'Quest Token', 
+            balance: userStats.completedQuests.length * 5, 
+            value: 0.25, 
+            canisterId: 'quest-token' 
+          },
+          { 
+            symbol: 'LOCAL', 
+            name: 'Local Rewards', 
+            balance: Math.floor(userStats.xp / 100), 
+            value: 0.10, 
+            canisterId: 'local-token' 
+          },
         ],
       };
       
-      const mockTransactions: BlockchainTransaction[] = [
-        {
-          id: '1',
-          type: 'reward_earned',
-          amount: 50,
-          token: 'GAMI',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          status: 'completed',
-          blockHeight: 12345,
-        },
-        {
-          id: '2',
-          type: 'quest_completed',
-          amount: 25,
-          token: 'QUEST',
-          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-          status: 'completed',
-          blockHeight: 12344,
-        },
-      ];
+      // Load real transaction history from storage
+      const storedTransactions = await AsyncStorage.getItem('blockchain_transactions');
+      const liveTransactions = storedTransactions ? JSON.parse(storedTransactions) : [];
       
-      setWallet(mockWallet);
-      setTransactions(mockTransactions);
+      setWallet(liveWallet);
+      setTransactions(liveTransactions);
     } catch (error) {
       console.error('Failed to load wallet data:', error);
     }
@@ -109,6 +153,18 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     setIsConnecting(true);
     try {
       await icpService.logout();
+      
+      // Clear all stored data
+      await AsyncStorage.multiRemove([
+        'userXP',
+        'userLevel',
+        'completedQuests', 
+        'liveStats',
+        'blockchain_transactions',
+        'icp_principal'
+      ]);
+      
+      // Reset all state
       setAuthState({
         isAuthenticated: false,
         principal: null,
@@ -116,6 +172,11 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       });
       setWallet(null);
       setTransactions([]);
+      setUserStats({
+        xp: 2847,
+        level: 12,
+        completedQuests: [],
+      });
     } catch (error) {
       console.error('Logout failed:', error);
     } finally {
@@ -175,7 +236,12 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
           status: 'completed',
           blockHeight: Math.floor(Math.random() * 10000) + 50000,
         };
-        setTransactions(prev => [newTransaction, ...prev]);
+        
+        const updatedTransactions = [newTransaction, ...transactions];
+        setTransactions(updatedTransactions);
+        
+        // Save transactions to storage
+        await AsyncStorage.setItem('blockchain_transactions', JSON.stringify(updatedTransactions));
         
         await loadWalletData(wallet.principal);
       }
@@ -186,6 +252,17 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const getUserStats = async () => {
+    await loadUserStats();
+    return userStats;
+  };
+
+  const updateUserStats = async (xp: number, level: number, completedQuests: string[]) => {
+    await saveUserStats(xp, level, completedQuests);
+    if (wallet) {
+      await loadWalletData(wallet.principal);
+    }
+  };
   const value: BlockchainContextType = {
     ...authState,
     wallet,
@@ -197,6 +274,8 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
     disconnectWallet,
     refreshBalance,
     completeQuestOnChain,
+    getUserStats,
+    updateUserStats,
   };
 
   return (

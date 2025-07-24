@@ -12,6 +12,7 @@ import {
 import { Settings, Trophy, Star, Zap, Calendar, Target, Award, Shield, Bell, CircleHelp as HelpCircle, LogOut, ChevronRight, Link as LinkIcon, Coins, ExternalLink } from 'lucide-react-native';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Achievement {
   id: string;
@@ -32,11 +33,11 @@ interface ConnectedApp {
 }
 
 export default function ProfileScreen() {
-  const { wallet, transactions, isAuthenticated } = useBlockchain();
+  const { wallet, transactions, isAuthenticated, logout } = useBlockchain();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out? You can always sign back in to continue your adventure.',
@@ -45,7 +46,28 @@ export default function ProfileScreen() {
         { 
           text: 'Sign Out', 
           style: 'destructive',
-          onPress: () => router.replace('/(auth)/login')
+          onPress: async () => {
+            try {
+              // Clear all stored data
+              await AsyncStorage.multiRemove([
+                'userXP',
+                'userLevel', 
+                'completedQuests',
+                'liveStats',
+                'icp_principal'
+              ]);
+              
+              // Logout from blockchain
+              await logout();
+              
+              // Navigate to splash screen
+              router.replace('/(auth)/splash');
+            } catch (error) {
+              console.error('Sign out error:', error);
+              // Force navigation even if cleanup fails
+              router.replace('/(auth)/splash');
+            }
+          }
         }
       ]
     );

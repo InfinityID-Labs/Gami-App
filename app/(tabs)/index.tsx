@@ -22,6 +22,7 @@ import {
 import { useBlockchain } from '@/contexts/BlockchainContext';
 import BlockchainIntegration from '@/components/BlockchainIntegration';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
@@ -43,7 +44,7 @@ interface RecentActivity {
 }
 
 export default function HomeScreen() {
-  const { wallet } = useBlockchain();
+  const { wallet, getUserStats } = useBlockchain();
   const [stats, setStats] = useState<UserStats>({
     xp: 2847,
     level: 12,
@@ -80,12 +81,31 @@ export default function HomeScreen() {
   const [progressAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
+    loadLiveStats();
     Animated.timing(progressAnim, {
       toValue: (stats.xp / stats.xpToNextLevel) * 100,
       duration: 1500,
       useNativeDriver: false,
     }).start();
-  }, []);
+  }, [stats.xp]);
+
+  const loadLiveStats = async () => {
+    try {
+      const userStats = await getUserStats();
+      const storedLiveStats = await AsyncStorage.getItem('liveStats');
+      const liveStats = storedLiveStats ? JSON.parse(storedLiveStats) : { totalEarned: 0, questsCompleted: 0 };
+      
+      setStats(prev => ({
+        ...prev,
+        xp: userStats.xp,
+        level: userStats.level,
+        totalRewards: liveStats.totalEarned,
+        completedQuests: liveStats.questsCompleted,
+      }));
+    } catch (error) {
+      console.error('Failed to load live stats:', error);
+    }
+  };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
