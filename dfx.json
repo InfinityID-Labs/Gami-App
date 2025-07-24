@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "canisters": {
+    "gami_backend": {
+      "type": "motoko",
+      "main": "src/gami_backend/main.mo"
+    },
+    "gami_frontend": {
+      "type": "assets",
+      "source": ["dist/"]
+    },
+    "quest_rewards": {
+      "type": "motoko",
+      "main": "src/quest_rewards/main.mo"
+    },
+    "user_profiles": {
+      "type": "motoko",
+      "main": "src/user_profiles/main.mo"
+    },
+    "leaderboard": {
+      "type": "motoko",
+      "main": "src/leaderboard/main.mo"
+    },
+    "token_ledger": {
+      "type": "motoko",
+      "main": "src/token_ledger/main.mo"
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:4943",
+      "type": "ephemeral"
+    },
+    "ic": {
+      "providers": ["https://ic0.app"],
+      "type": "persistent"
+    },
+    "playground": {
+      "providers": ["https://play.motoko.org"],
+      "type": "playground"
+    }
+  },
+  "output_env_file": ".env",
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  }
+}
