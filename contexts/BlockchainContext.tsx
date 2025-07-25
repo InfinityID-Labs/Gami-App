@@ -126,7 +126,12 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       
       // Load real transaction history from storage
       const storedTransactions = await AsyncStorage.getItem('blockchain_transactions');
-      const liveTransactions = storedTransactions ? JSON.parse(storedTransactions) : [];
+      const liveTransactions = storedTransactions 
+        ? JSON.parse(storedTransactions).map((tx: any) => ({
+            ...tx,
+            timestamp: new Date(tx.timestamp)
+          }))
+        : [];
       
       setWallet(liveWallet);
       setTransactions(liveTransactions);
