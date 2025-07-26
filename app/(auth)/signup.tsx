@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useGamiBackend } from '@/hooks/useGamiBackend';
 import {
   View,
   Text,
@@ -6,15 +7,16 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+import Toast from '@/components/Toast';
 import { router } from 'expo-router';
 import { Zap, Mail, Lock, User, Eye, EyeOff, Gift, ChevronLeft } from 'lucide-react-native';
 
 export default function SignupScreen() {
+  const { createUserProfile } = useGamiBackend();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -45,85 +47,93 @@ export default function SignupScreen() {
         Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]).start();
-      
-      Alert.alert(
-        'Missing Information',
-        'Please fill in all fields to create your account.',
-        [{ text: 'OK', style: 'default' }]
-      );
+
+      Toast.show({
+        type: 'error',
+        text1: 'Missing Information',
+        text2: 'Please fill in all fields to create your account.'
+      });
       return;
     }
 
     // Validate username
     if (formData.username.length < 3) {
-      Alert.alert(
-        'Username Too Short',
-        'Your username must be at least 3 characters long.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Username Too Short',
+        text2: 'Your username must be at least 3 characters long.'
+      });
       return;
     }
 
     // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
-      Alert.alert(
-        'Invalid Email',
-        'Please enter a valid email address.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Invalid Email',
+        text2: 'Please enter a valid email address.'
+      });
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert(
-        'Password Mismatch',
-        'Your passwords don\'t match. Please try again.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Password Mismatch',
+        text2: 'Your passwords do not match. Please try again.'
+      });
       return;
     }
 
     if (formData.password.length < 6) {
-      Alert.alert(
-        'Password Too Short',
-        'Your password must be at least 6 characters long for security.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Password Too Short',
+        text2: 'Your password must be at least 6 characters long for security.'
+      });
       return;
     }
 
     setIsLoading(true);
-    
-    // Button press animation
-    Animated.sequence([
-      Animated.timing(buttonScaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
-      Animated.timing(buttonScaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
-    ]).start();
-
-    // Welcome animation
-    Animated.timing(welcomeAnim, {
-      toValue: 1,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-
-    // Simulate signup process
-    setTimeout(() => {
-      if (isMounted.current) {
+    try {
+      // Chama o backend para criar o perfil
+      const result = await createUserProfile(formData.username);
+      if ('ok' in result) {
+        Animated.sequence([
+          Animated.timing(buttonScaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+          Animated.timing(buttonScaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
+        ]).start();
+        Animated.timing(welcomeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start();
+        if (isMounted.current) {
+          setIsLoading(false);
+          Toast.show({
+            type: 'success',
+            text1: 'Welcome to Gami! 🎉',
+            text2: `Hey ${formData.username}! Your adventure begins now. You earned 100 XP as a welcome gift!`,
+            onHide: () => router.replace('/(tabs)'),
+          });
+        }
+      } else {
         setIsLoading(false);
-        Alert.alert(
-          'Welcome to Gami! 🎉',
-          `Hey ${formData.username}! Your adventure begins now. You've earned 100 bonus XP for joining!`,
-          [
-            {
-              text: 'Start Playing!',
-              onPress: () => router.replace('/(tabs)'),
-            },
-          ]
-        );
+        Toast.show({
+          type: 'error',
+          text1: 'Profile Creation Failed',
+          text2: (result && typeof result === 'object' && 'err' in result && typeof result.err === 'string') ? result.err : 'Unknown error.'
+        });
       }
-    }, 2500);
+    } catch (e) {
+      setIsLoading(false);
+      Toast.show({
+        type: 'error',
+        text1: 'Connection Error',
+        text2: 'Could not connect to the backend.'
+      });
+    }
   };
 
   const updateFormData = (field: string, value: string) => {
@@ -131,13 +141,13 @@ export default function SignupScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Back Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
@@ -154,7 +164,7 @@ export default function SignupScreen() {
         </View>
 
         {/* Welcome Bonus Card */}
-        <Animated.View 
+        <Animated.View
           style={[
             styles.bonusCard,
             {

@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Toast from '@/components/Toast';
 import { router } from 'expo-router';
 import { Zap, Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react-native';
 import { useBlockchain } from '@/contexts/BlockchainContext';
@@ -40,7 +40,7 @@ export default function LoginScreen() {
         Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]).start();
-      
+
       Alert.alert(
         'Missing Information',
         'Please enter both your email and password to continue.',
@@ -61,7 +61,7 @@ export default function LoginScreen() {
     }
 
     setIsLoading(true);
-    
+
     // Button press animation
     Animated.sequence([
       Animated.timing(buttonScaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
@@ -72,16 +72,12 @@ export default function LoginScreen() {
     setTimeout(() => {
       if (isMounted.current) {
         setIsLoading(false);
-        Alert.alert(
-          'Welcome Back, Champion! 🎉',
-          'Ready to continue your quest for rewards?',
-          [
-            {
-              text: 'Let\'s Go!',
-              onPress: () => router.replace('/(tabs)'),
-            },
-          ]
-        );
+        Toast.show({
+          type: 'success',
+          text1: 'Welcome Back, Champion! 🎉',
+          text2: 'Ready to continue your quest for rewards?',
+          onHide: () => router.replace('/(tabs)'),
+        });
       }
     }, 2000);
   };
@@ -92,25 +88,25 @@ export default function LoginScreen() {
     if (isMounted.current) {
       setIsLoading(false);
     }
-    
+
     if (success) {
-      Alert.alert(
-        'Blockchain Connected! ⚡',
-        'Your Internet Identity is now linked. Your rewards are secured on-chain!',
-        [
-          {
-            text: 'Amazing!',
-            onPress: () => router.replace('/(tabs)'),
-          },
-        ]
-      );
+      Toast.show({
+        type: 'success',
+        text1: 'Blockchain Connected! ⚡',
+        text2: 'Your Internet Identity is now linked. Your rewards are secured on-chain!',
+        onHide: () => router.replace('/(tabs)'),
+      });
     } else {
-      Alert.alert('Connection Failed', 'Please try connecting your Internet Identity again.');
+      Toast.show({
+        type: 'error',
+        text1: 'Connection Failed',
+        text2: 'Please try connecting your Internet Identity again.'
+      });
     }
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >

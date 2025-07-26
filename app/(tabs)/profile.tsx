@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   Image,
   Switch,
-  Alert,
 } from 'react-native';
-import { Settings, Trophy, Star, Zap, Calendar, Target, Award, Shield, Bell, CircleHelp as HelpCircle, LogOut, ChevronRight, Link as LinkIcon, Coins, ExternalLink } from 'lucide-react-native';
+import Toast from '@/components/Toast';
+import { Settings, Trophy, Star, Zap, Calendar, Target, Award, Shield, Bell, CircleHelp as HelpCircle, LogOut, ChevronRight, Link as LinkIcon, Coins } from 'lucide-react-native';
 import { useBlockchain } from '@/contexts/BlockchainContext';
+import { useGamiBackend } from '@/hooks/useGamiBackend';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -34,43 +35,34 @@ interface ConnectedApp {
 
 export default function ProfileScreen() {
   const { wallet, transactions, isAuthenticated, logout } = useBlockchain();
+  const { getUserProfile, getLeaderboard } = useGamiBackend();
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
 
   const handleSignOut = async () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out? You can always sign back in to continue your adventure.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Clear all stored data
-              await AsyncStorage.multiRemove([
-                'userXP',
-                'userLevel', 
-                'completedQuests',
-                'liveStats',
-                'icp_principal'
-              ]);
-              
-              // Logout from blockchain
-              await logout();
-              
-              // Navigate to splash screen
-              router.replace('/(auth)/splash');
-            } catch (error) {
-              console.error('Sign out error:', error);
-              // Force navigation even if cleanup fails
-              router.replace('/(auth)/splash');
-            }
-          }
+    Toast.show({
+      type: 'info',
+      text1: 'Signed Out',
+      text2: 'You have been signed out. See you soon!',
+      onHide: async () => {
+        try {
+          await AsyncStorage.multiRemove([
+            'userXP',
+            'userLevel',
+            'completedQuests',
+            'liveStats',
+            'icp_principal'
+          ]);
+          await logout();
+          router.replace('/(auth)/splash');
+        } catch (error) {
+          console.error('Sign out error:', error);
+          router.replace('/(auth)/splash');
         }
-      ]
-    );
+      }
+    });
   };
 
   const handleConnectWallet = () => {
@@ -78,23 +70,36 @@ export default function ProfileScreen() {
   };
 
   const handleHelp = () => {
-    Alert.alert(
-      'Help & Support',
-      'Need assistance? Here are your options:\n\n• Check our FAQ section\n• Contact support team\n• Join our community Discord\n• Email: support@gami.app',
-      [{ text: 'Got it!', style: 'default' }]
-    );
+    Toast.show({
+      type: 'info',
+      text1: 'Help & Support',
+      text2: 'Need assistance? Check our FAQ, contact support, join our Discord, or email support@gami.app.'
+    });
   };
 
-  const userProfile = {
-    name: 'Alex Thompson',
-    username: '@gamemaster_alex',
-    avatar: 'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg',
-    level: 12,
-    xp: 2847,
-    joinDate: 'January 2024',
-    totalRewards: 156.75,
-    globalRank: 1247,
-  };
+  useEffect(() => {
+    (async () => {
+      try {
+        const profile = await getUserProfile();
+        if (profile) setUserProfile(profile);
+        const lb = await getLeaderboard();
+        setLeaderboard(lb);
+      } catch (e) {
+        // fallback para mock
+        setUserProfile({
+          name: 'Alex Thompson',
+          username: '@gamemaster_alex',
+          avatar: 'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg',
+          level: 12,
+          xp: 2847,
+          joinDate: 'January 2024',
+          totalRewards: 156.75,
+          globalRank: 1247,
+        });
+      }
+    })();
+  }, []);
+  if (!userProfile) return <Text>Loading profile...</Text>;
 
   const achievements: Achievement[] = [
     {
@@ -196,7 +201,7 @@ export default function ProfileScreen() {
                 </Text>
                 <View
                   style={[
-                    styles.statusDot,
+
                     { backgroundColor: transaction.status === 'completed' ? '#10B981' : '#F59E0B' },
                   ]}
                 />
@@ -212,19 +217,19 @@ export default function ProfileScreen() {
           <Text style={styles.statNumber}>{userProfile.globalRank}</Text>
           <Text style={styles.statLabel}>Global Rank</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Zap size={20} color="#8B5CF6" />
           <Text style={styles.statNumber}>{userProfile.xp}</Text>
           <Text style={styles.statLabel}>Total XP</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Star size={20} color="#10B981" />
           <Text style={styles.statNumber}>${userProfile.totalRewards}</Text>
           <Text style={styles.statLabel}>Rewards</Text>
         </View>
-        
+
         <View style={styles.statCard}>
           <Calendar size={20} color="#6B7280" />
           <Text style={styles.statNumber}>{userProfile.joinDate}</Text>
@@ -249,7 +254,7 @@ export default function ProfileScreen() {
               </View>
               <Text style={styles.achievementTitle}>{achievement.title}</Text>
               <Text style={styles.achievementDescription}>{achievement.description}</Text>
-              
+
               {!achievement.unlocked && achievement.progress && (
                 <View style={styles.progressContainer}>
                   <View style={styles.progressBar}>
@@ -265,7 +270,7 @@ export default function ProfileScreen() {
                   </Text>
                 </View>
               )}
-              
+
               {achievement.unlocked && (
                 <View style={styles.unlockedBadge}>
                   <Text style={styles.unlockedText}>Unlocked</Text>
@@ -289,7 +294,7 @@ export default function ProfileScreen() {
             <View style={styles.connectionStatus}>
               <View
                 style={[
-                  styles.statusDot,
+
                   { backgroundColor: app.connected ? '#10B981' : '#EF4444' },
                 ]}
               />
@@ -309,7 +314,7 @@ export default function ProfileScreen() {
       {/* Settings */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Settings</Text>
-        
+
         <View style={styles.settingItem}>
           <View style={styles.settingInfo}>
             <Bell size={20} color="#6B7280" />
@@ -591,11 +596,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+  // statusDot removido
   statusText: {
     fontSize: 12,
     fontWeight: '600',
@@ -686,9 +687,5 @@ const styles = StyleSheet.create({
     color: '#10B981',
     fontFamily: 'Inter-SemiBold',
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
+  // statusDot duplicado removido
 });

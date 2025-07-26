@@ -8,16 +8,15 @@ import {
   Image,
 } from 'react-native';
 import {
-  Trophy,
   Medal,
   Crown,
   TrendingUp,
   MapPin,
   Globe,
   Building,
-  ChevronDown,
+  ChevronDown
 } from 'lucide-react-native';
-import { Alert } from 'react-native';
+import Toast from '@/components/Toast';
 
 interface LeaderboardEntry {
   id: string;
@@ -150,15 +149,13 @@ export default function LeaderboardScreen() {
   const selectedCategoryData = categories.find(cat => cat.id === selectedCategory);
 
   const handleViewProfile = (username: string) => {
-    Alert.alert(
-      `${username}'s Profile`,
-      'View detailed stats, achievements, and recent activity for this player.',
-      [
-        { text: 'View Profile', onPress: () => {} },
-        { text: 'Challenge', onPress: () => Alert.alert('Challenge Sent!', `You've challenged ${username} to a friendly competition!`) },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
+    Toast.show({
+      type: 'info',
+      text1: `${username}'s Profile`,
+      text2: 'View detailed stats, achievements, and recent activity for this player.'
+    });
+    // For challenge, you could add a button in the UI to trigger this:
+    // Toast.show({ type: 'success', text1: 'Challenge Sent!', text2: `You've challenged ${username} to a friendly competition!` });
   };
 
   return (
@@ -238,8 +235,8 @@ export default function LeaderboardScreen() {
       <ScrollView style={styles.leaderboardList} showsVerticalScrollIndicator={false}>
         <Text style={styles.listTitle}>Top Performers</Text>
         {leaderboardData.map((entry) => (
-          <TouchableOpacity 
-            key={entry.id} 
+          <TouchableOpacity
+            key={entry.id}
             style={styles.leaderboardItem}
             onPress={() => handleViewProfile(entry.username)}
           >

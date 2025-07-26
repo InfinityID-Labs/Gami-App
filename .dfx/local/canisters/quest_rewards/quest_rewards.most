@@ -1,0 +1,27 @@
+// Version: 1.0.0
+type RewardToken__325294615 =
+  {
+    decimals : Nat8;
+    name : Text;
+    symbol : TokenSymbol__975610948;
+    totalSupply : TokenAmount__997953875
+  };
+type TokenAmount__997953875 = Float;
+type TokenSymbol__975610948 = Text;
+type Transaction__974538726 =
+  {
+    amount : TokenAmount__997953875;
+    from : ?UserId__508001876;
+    id : Text;
+    timestamp : Int;
+    to : UserId__508001876;
+    token : TokenSymbol__975610948;
+    transactionType : Text
+  };
+type UserId__508001876 = Principal;
+actor {
+  stable var balancesEntries : [(Text, TokenAmount__997953875)];
+  stable var tokensEntries :
+    [(TokenSymbol__975610948, RewardToken__325294615)];
+  stable var transactionsEntries : [(Text, Transaction__974538726)]
+};

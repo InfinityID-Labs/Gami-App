@@ -1,0 +1,51 @@
+type UserId = principal;
+type Transaction = 
+ record {
+   amount: TokenAmount;
+   from: opt UserId;
+   id: text;
+   timestamp: int;
+   to: UserId;
+   token: TokenSymbol;
+   transactionType: text;
+ };
+type TokenSymbol = text;
+type TokenAmount = float64;
+type RewardToken = 
+ record {
+   decimals: nat8;
+   name: text;
+   symbol: TokenSymbol;
+   totalSupply: TokenAmount;
+ };
+type Result_1 = 
+ variant {
+   err: text;
+   ok: vec Transaction;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok: Transaction;
+ };
+type QuestId = text;
+service : {
+  awardQuestReward: (userId: UserId, questId: QuestId, tokenRewards:
+   vec record {
+         TokenSymbol;
+         TokenAmount;
+       }) -> (Result_1);
+  getAllTokens: () -> (vec RewardToken) query;
+  getBalance: (userId: UserId, token: TokenSymbol) -> (TokenAmount) query;
+  getPortfolioValue: (userId: UserId) -> (float64) query;
+  getToken: (symbol: TokenSymbol) -> (opt RewardToken) query;
+  getUserBalances: (userId: UserId) ->
+   (vec record {
+          TokenSymbol;
+          TokenAmount;
+        }) query;
+  getUserTransactions: (userId: UserId) -> (vec Transaction) query;
+  greet: (name: text) -> (text) query;
+  initializeTokens: () -> ();
+  transfer: (to: UserId, token: TokenSymbol, amount: TokenAmount) -> (Result);
+}
