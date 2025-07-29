@@ -35,34 +35,29 @@ interface ConnectedApp {
 
 export default function ProfileScreen() {
   const { wallet, transactions, isAuthenticated, logout } = useBlockchain();
-  const { getUserProfile, getLeaderboard } = useGamiBackend();
+  const { getUserProfile } = useGamiBackend();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
 
   const handleSignOut = async () => {
+    const { icpService } = require('../../services/icpService');
+    await icpService.logout();
+    await AsyncStorage.multiRemove([
+      'userXP',
+      'userLevel',
+      'completedQuests',
+      'liveStats',
+      'icp_principal'
+    ]);
+    await logout();
     Toast.show({
-      type: 'info',
-      text1: 'Signed Out',
-      text2: 'You have been signed out. See you soon!',
-      onHide: async () => {
-        try {
-          await AsyncStorage.multiRemove([
-            'userXP',
-            'userLevel',
-            'completedQuests',
-            'liveStats',
-            'icp_principal'
-          ]);
-          await logout();
-          router.replace('/(auth)/splash');
-        } catch (error) {
-          console.error('Sign out error:', error);
-          router.replace('/(auth)/splash');
-        }
-      }
+      type: 'success',
+      text1: 'Logout ICP realizado',
+      text2: 'Você saiu da sua conta Internet Identity.'
     });
+    router.replace('/(auth)/login');
   };
 
   const handleConnectWallet = () => {
@@ -82,8 +77,8 @@ export default function ProfileScreen() {
       try {
         const profile = await getUserProfile();
         if (profile) setUserProfile(profile);
-        const lb = await getLeaderboard();
-        setLeaderboard(lb);
+        // const lb = await getLeaderboard();
+        // setLeaderboard(lb);
       } catch (e) {
         // fallback para mock
         setUserProfile({

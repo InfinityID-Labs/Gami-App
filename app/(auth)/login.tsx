@@ -15,6 +15,30 @@ import { Zap, Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react-native';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 
 export default function LoginScreen() {
+  // Checa autenticação ICP ao focar na tela (web e mobile)
+  React.useEffect(() => {
+    const checkAuth = async () => {
+      const { icpService } = require('../../services/icpService');
+      const auth = await icpService.getStoredAuth();
+      if (auth.isAuthenticated) {
+        router.replace('/(tabs)');
+      }
+    };
+    checkAuth(); // executa ao montar
+
+    // Web: detecta retorno da aba após login ICP
+    if (typeof document !== 'undefined') {
+      const onVisibilityChange = () => {
+        if (!document.hidden) {
+          checkAuth();
+        }
+      };
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      return () => {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      };
+    }
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,22 +65,22 @@ export default function LoginScreen() {
         Animated.timing(shakeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]).start();
 
-      Alert.alert(
-        'Missing Information',
-        'Please enter both your email and password to continue.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Informação faltando',
+        text2: 'Preencha e-mail e senha para continuar.',
+      });
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert(
-        'Invalid Email',
-        'Please enter a valid email address.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'E-mail inválido',
+        text2: 'Digite um e-mail válido.',
+      });
       return;
     }
 
@@ -89,18 +113,21 @@ export default function LoginScreen() {
       setIsLoading(false);
     }
 
-    if (success) {
+    // Verifica autenticação real após o login ICP
+    const { icpService } = require('../../services/icpService');
+    const auth = await icpService.getStoredAuth();
+    if (auth.isAuthenticated) {
       Toast.show({
         type: 'success',
         text1: 'Blockchain Connected! ⚡',
-        text2: 'Your Internet Identity is now linked. Your rewards are secured on-chain!',
+        text2: 'Seu Internet Identity está vinculado!',
         onHide: () => router.replace('/(tabs)'),
       });
     } else {
       Toast.show({
         type: 'error',
-        text1: 'Connection Failed',
-        text2: 'Please try connecting your Internet Identity again.'
+        text1: 'Falha no login ICP',
+        text2: 'Tente conectar novamente.',
       });
     }
   };
