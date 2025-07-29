@@ -4,48 +4,52 @@ import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
-import TokenLedger "canister:token_ledger";
-
-// Tipos auxiliares
-type QuestId = Text;
-type UserId = Principal;
-
-type Quest = {
-  id : QuestId;
-  title : Text;
-  description : Text;
-  category : Text;
-  xpReward : Nat;
-  moneyReward : ?Float;
-  timeLimit : Text;
-  participants : Nat;
-  difficulty : Text;
-  sponsor : Text;
-  active : Bool;
-};
-
-type UserProfile = {
-  id : UserId;
-  username : Text;
-  level : Nat;
-  xp : Nat;
-  totalRewards : Float;
-  joinDate : Int;
-  globalRank : Nat;
-};
-
-type QuestCompletion = {
-  userId : UserId;
-  questId : QuestId;
-  completedAt : Int;
-  xpEarned : Nat;
-  rewardEarned : ?Float;
-};
+// import _TokenLedger "canister:token_ledger";
 
 persistent actor GamiBackend {
+  // Tipos auxiliares
+  type QuestId = Text;
+  type UserId = Principal;
+
+  type Quest = {
+    id : QuestId;
+    title : Text;
+    description : Text;
+    category : Text;
+    xpReward : Nat;
+    moneyReward : ?Float;
+    timeLimit : Text;
+    participants : Nat;
+    difficulty : Text;
+    sponsor : Text;
+    active : Bool;
+  };
+
+  type UserProfile = {
+    id : UserId;
+    username : Text;
+    level : Nat;
+    xp : Nat;
+    totalRewards : Float;
+    joinDate : Int;
+    globalRank : Nat;
+  };
+
+  type QuestCompletion = {
+    userId : UserId;
+    questId : QuestId;
+    completedAt : Int;
+    xpEarned : Nat;
+    rewardEarned : ?Float;
+  };
+  // Variáveis globais e mapas
+  transient let quests = HashMap.HashMap<QuestId, Quest>(0, Text.equal, Text.hash);
+  transient let userProfiles = HashMap.HashMap<UserId, UserProfile>(0, Principal.equal, Principal.hash);
+  transient let _questCompletions = HashMap.HashMap<Text, QuestCompletion>(0, Text.equal, Text.hash);
+
   // Criação de perfil de usuário
   public func createUserProfile(username : Text) : async Result.Result<UserProfile, Text> {
-    let caller = Principal.fromActor(this);
+    let caller = Principal.fromActor(GamiBackend);
     if (Text.size(username) < 3 or Text.size(username) > 20) {
       return #err("Username must be 3-20 characters");
     };
@@ -53,7 +57,7 @@ persistent actor GamiBackend {
       return #err("Username cannot contain spaces");
     };
     switch (userProfiles.get(caller)) {
-      case (?existing) { #err("User profile already exists") };
+      case (?_) { #err("User profile already exists") };
       case null {
         let profile : UserProfile = {
           id = caller;
@@ -74,7 +78,7 @@ persistent actor GamiBackend {
   public query func getUserProfile(userId : ?UserId) : async ?UserProfile {
     let targetId = switch (userId) {
       case (?id) { id };
-      case null { Principal.fromActor(this) };
+      case null { Principal.fromActor(GamiBackend) };
     };
     userProfiles.get(targetId);
   };
@@ -108,7 +112,7 @@ persistent actor GamiBackend {
       };
     };
     switch (quests.get(id)) {
-      case (?existing) { #err("Quest already exists") };
+      case (?_) { #err("Quest already exists") };
       case null {
         let quest : Quest = {
           id = id;
@@ -205,13 +209,9 @@ persistent actor GamiBackend {
       sorted;
     };
   };
-  // Variáveis globais e mapas
-  transient let quests = HashMap.HashMap<QuestId, Quest>(0, Text.equal, Text.hash);
-  transient let userProfiles = HashMap.HashMap<UserId, UserProfile>(0, Principal.equal, Principal.hash);
-  transient let questCompletions = HashMap.HashMap<Text, QuestCompletion>(0, Text.equal, Text.hash);
 
   // Função utilitária de cálculo de nível
-  private func calculateLevel(xp : Nat) : Nat {
+  private func _calculateLevel(xp : Nat) : Nat {
     if (xp < 1000) { 1 } else if (xp < 2500) { 2 } else if (xp < 5000) { 3 } else if (xp < 8000) {
       4;
     } else if (xp < 12000) { 5 } else { (xp / 2000) + 1 };

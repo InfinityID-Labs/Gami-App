@@ -6,8 +6,9 @@
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start --tunnel --clear",
     "build:web": "expo export --platform web",
-    "build": "expo start --tunnel",
-    "lint": "expo lint"
+    "build": "expo export --platform web",
+    "lint": "expo lint",
+    "backend": "dfx stop && rm -rf .dfx && dfx start --background && dfx canister create --all && dfx build && dfx deploy"
   },
   "dependencies": {
     "@dfinity/agent": "^3.1.0",
