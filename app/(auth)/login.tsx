@@ -108,26 +108,47 @@ export default function LoginScreen() {
 
   const handleBlockchainLogin = async () => {
     setIsLoading(true);
-    const success = await connectWallet();
-    if (isMounted.current) {
-      setIsLoading(false);
-    }
 
-    // Verifica autenticação real após o login ICP
-    const { icpService } = require('../../services/icpService');
-    const auth = await icpService.getStoredAuth();
-    if (auth.isAuthenticated) {
+    try {
       Toast.show({
-        type: 'success',
-        text1: 'Blockchain Connected! ⚡',
-        text2: 'Seu Internet Identity está vinculado!',
-        onHide: () => router.replace('/(tabs)'),
+        type: 'info',
+        text1: 'Abrindo Internet Identity...',
+        text2: 'Aguarde enquanto abrimos o navegador',
       });
-    } else {
+
+      const success = await connectWallet();
+
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
+
+      // Verifica autenticação real após o login ICP
+      const { icpService } = require('../../services/icpService');
+      const auth = await icpService.getStoredAuth();
+
+      if (auth.isAuthenticated) {
+        Toast.show({
+          type: 'success',
+          text1: 'Blockchain Connected! ⚡',
+          text2: 'Seu Internet Identity está vinculado!',
+          onHide: () => router.replace('/(tabs)'),
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Falha no login ICP',
+          text2: 'Tente conectar novamente.',
+        });
+      }
+    } catch (error) {
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
+
       Toast.show({
         type: 'error',
-        text1: 'Falha no login ICP',
-        text2: 'Tente conectar novamente.',
+        text1: 'Erro de conexão',
+        text2: 'Não foi possível conectar ao Internet Identity',
       });
     }
   };
@@ -211,7 +232,9 @@ export default function LoginScreen() {
           disabled={isLoading}
         >
           <Shield size={20} color="#FFFFFF" />
-          <Text style={styles.blockchainButtonText}>Connect Internet Identity</Text>
+          <Text style={styles.blockchainButtonText}>
+            {isLoading ? 'Conectando...' : 'Connect Internet Identity'}
+          </Text>
         </TouchableOpacity>
 
         {/* Sign Up Link */}
