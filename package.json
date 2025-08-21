@@ -8,7 +8,16 @@
     "build:web": "expo export --platform web",
     "build": "expo export --platform web",
     "lint": "expo lint",
-    "backend": "dfx stop && rm -rf .dfx && dfx start --background && dfx canister create --all && dfx build && dfx deploy"
+    "backend": "dfx stop && rm -rf .dfx && dfx start --background && dfx canister create --all && dfx build && dfx deploy",
+    "callback-server": "node services/callbackServer.js",
+    "dev:full": "npm run callback-server & npm run dev",
+    "canisters:stop": "dfx stop",
+    "canisters:clean": "rm -rf .dfx",
+    "canisters:start": "dfx start --clean --background",
+    "canisters:deploy": "dfx deploy",
+    "canisters:build": "dfx build",
+    "update-env": "./update-env.sh",
+    "initial": "npm run canisters:stop && npm run canisters:clean && npm run canisters:start && npm run canisters:deploy && npm run update-env && npm run callback-server & npm run dev"
   },
   "dependencies": {
     "@dfinity/agent": "^3.1.0",
