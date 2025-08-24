@@ -4,13 +4,33 @@ import HashMap "mo:base/HashMap";
 import Text "mo:base/Text";
 import Principal "mo:base/Principal";
 import Result "mo:base/Result";
-// import _TokenLedger "canister:token_ledger";
+import Blob "mo:base/Blob";
+import Nat16 "mo:base/Nat16";
+import Debug "mo:base/Debug";
+import Iter "mo:base/Iter";
+import Nat "mo:base/Nat";
+import Float "mo:base/Float";
 
+// O bloco do ator persistente que contém toda a lógica e estado do canister.
 persistent actor GamiBackend {
-  // Tipos auxiliares
+  // Tipos HTTP
+  type HttpRequest = {
+    method : Text;
+    url : Text;
+    headers : [(Text, Text)];
+    body : Blob;
+    certificate_version : ?Nat16;
+  };
+  type HttpResponse = {
+    status : Nat16;
+    headers : [(Text, Text)];
+    body : Blob;
+    streaming_strategy : ?();
+  };
+
+  // Tipos auxiliares do projeto
   type QuestId = Text;
   type UserId = Principal;
-
   type Quest = {
     id : QuestId;
     title : Text;
@@ -24,32 +44,67 @@ persistent actor GamiBackend {
     sponsor : Text;
     active : Bool;
   };
-
   type UserProfile = {
     id : UserId;
     username : Text;
     level : Nat;
     xp : Nat;
     totalRewards : Float;
-    joinDate : Int;
+    joinDate : Time.Time;
     globalRank : Nat;
   };
-
   type QuestCompletion = {
     userId : UserId;
     questId : QuestId;
-    completedAt : Int;
+    completedAt : Time.Time;
     xpEarned : Nat;
     rewardEarned : ?Float;
   };
-  // Variáveis globais e mapas
-  transient let quests = HashMap.HashMap<QuestId, Quest>(0, Text.equal, Text.hash);
-  transient let userProfiles = HashMap.HashMap<UserId, UserProfile>(0, Principal.equal, Principal.hash);
-  transient let _questCompletions = HashMap.HashMap<Text, QuestCompletion>(0, Text.equal, Text.hash);
+  // Variáveis de estado persistentes
+  transient let appDeepLinkBase = "gamiapp://auth/callback";
+  transient var quests = HashMap.HashMap<QuestId, Quest>(0, Text.equal, Text.hash);
+  transient var userProfiles = HashMap.HashMap<UserId, UserProfile>(0, Principal.equal, Principal.hash);
+  transient var _questCompletions = HashMap.HashMap<Text, QuestCompletion>(0, Text.equal, Text.hash);
 
-  // Criação de perfil de usuário
-  public func createUserProfile(username : Text) : async Result.Result<UserProfile, Text> {
-    let caller = Principal.fromActor(GamiBackend);
+  // A função http_request, agora query, para ser mais segura e não gastar cycles desnecessariamente
+  // Corrigimos o parsing da URL para buscar o principal no fragmento, que é o padrão do ICP.
+  public query func http_request(req : HttpRequest) : async HttpResponse {
+    Debug.print("Requisição HTTP recebida para URL: " # req.url);
+
+    // Extrai o 'principal' do fragmento da URL, que é o padrão de retorno do Internet Identity
+    let urlParts = Iter.toArray(Text.split(req.url, #char '#'));
+    if (urlParts.size() < 2) {
+      Debug.print("Erro: URL sem fragmento para principal.");
+      return {
+        status = 400;
+        headers = [];
+        body = Blob.fromArray([]);
+        streaming_strategy = null;
+      };
+    };
+
+    let fragmentParams = Iter.toArray(Text.split(urlParts[1], #char '&'));
+    var principal = "";
+    for (p in fragmentParams.vals()) {
+      let kv = Iter.toArray(Text.split(p, #char '='));
+      if (kv.size() == 2 and kv[0] == "principal") {
+        principal := kv[1];
+      };
+    };
+
+    let redirectUrl = appDeepLinkBase # "?principal=" # principal;
+    Debug.print("Redirecionando para: " # redirectUrl);
+
+    return {
+      status = 302; // Código HTTP para redirecionamento
+      headers = [("Location", redirectUrl)];
+      body = Blob.fromArray([]); // Corpo vazio para redirecionamento
+      streaming_strategy = null;
+    };
+  };
+
+  // Funções de usuário
+  public shared ({ caller }) func createUserProfile(username : Text) : async Result.Result<UserProfile, Text> {
     if (Text.size(username) < 3 or Text.size(username) > 20) {
       return #err("Username must be 3-20 characters");
     };
@@ -57,7 +112,7 @@ persistent actor GamiBackend {
       return #err("Username cannot contain spaces");
     };
     switch (userProfiles.get(caller)) {
-      case (?_) { #err("User profile already exists") };
+      case (?_) { return #err("User profile already exists") };
       case null {
         let profile : UserProfile = {
           id = caller;
@@ -66,24 +121,23 @@ persistent actor GamiBackend {
           xp = 100;
           totalRewards = 0.0;
           joinDate = Time.now();
-          globalRank = userProfiles.size() + 1;
+          globalRank = 0;
         };
         userProfiles.put(caller, profile);
-        #ok(profile);
+        return #ok(profile);
       };
     };
   };
 
-  // Buscar perfil de usuário
-  public query func getUserProfile(userId : ?UserId) : async ?UserProfile {
+  public shared query ({ caller }) func getUserProfile(userId : ?UserId) : async ?UserProfile {
     let targetId = switch (userId) {
       case (?id) { id };
-      case null { Principal.fromActor(GamiBackend) };
+      case null { caller };
     };
     userProfiles.get(targetId);
   };
 
-  // Criar quest
+  // Funções de Quest
   public func createQuest(
     id : QuestId,
     title : Text,
@@ -112,7 +166,7 @@ persistent actor GamiBackend {
       };
     };
     switch (quests.get(id)) {
-      case (?_) { #err("Quest already exists") };
+      case (?_) { return #err("Quest already exists") };
       case null {
         let quest : Quest = {
           id = id;
@@ -128,96 +182,39 @@ persistent actor GamiBackend {
           active = true;
         };
         quests.put(id, quest);
-        #ok(quest);
+        return #ok(quest);
       };
     };
   };
 
-  // Buscar todas as quests
   public query func getQuests() : async [Quest] {
-    let vals = quests.vals();
-    let dummy : Quest = {
-      id = "";
-      title = "";
-      description = "";
-      category = "";
-      xpReward = 0;
-      moneyReward = null;
-      timeLimit = "";
-      participants = 0;
-      difficulty = "";
-      sponsor = "";
-      active = false;
-    };
-    var arr : [var Quest] = Array.init<Quest>(0, dummy);
-    var count = 0;
-    label l for (q in vals) {
-      let tmp = Array.init<Quest>(count + 1, dummy);
-      var i = 0;
-      while (i < count) {
-        tmp[i] := arr[i];
-        i += 1;
-      };
-      tmp[count] := q;
-      arr := tmp;
-      count += 1;
-    };
-    if (count == 0)[] else Array.freeze(arr);
+    return Iter.toArray<Quest>(quests.vals());
   };
 
-  // Leaderboard simples (top N por XP)
   public query func getLeaderboard(limit : ?Nat) : async [UserProfile] {
     let maxResults = switch (limit) {
       case (?l) l;
       case null 100;
     };
-    let vals = userProfiles.vals();
-    let dummy : UserProfile = {
-      id = Principal.fromText("aaaaa-aa");
-      username = "";
-      level = 0;
-      xp = 0;
-      totalRewards = 0.0;
-      joinDate = 0;
-      globalRank = 0;
-    };
-    var arr : [var UserProfile] = Array.init<UserProfile>(0, dummy);
-    var count = 0;
-    label l for (u in vals) {
-      let tmp = Array.init<UserProfile>(count + 1, dummy);
-      var i = 0;
-      while (i < count) {
-        tmp[i] := arr[i];
-        i += 1;
-      };
-      tmp[count] := u;
-      arr := tmp;
-      count += 1;
-    };
-    let frozen = Array.freeze(arr);
-    let sorted = Array.sort<UserProfile>(
-      frozen,
+
+    var sortedUsers = Iter.toArray<UserProfile>(userProfiles.vals());
+
+    sortedUsers := Array.sort<UserProfile>(
+      sortedUsers,
       func(a, b) {
         if (a.xp > b.xp) { #less } else if (a.xp < b.xp) { #greater } else {
           #equal;
         };
       },
     );
-    if (maxResults < sorted.size()) {
-      Array.tabulate<UserProfile>(maxResults, func(j) { sorted[j] });
+
+    if (maxResults < sortedUsers.size()) {
+      return Array.tabulate<UserProfile>(maxResults, func(j) { sortedUsers[j] });
     } else {
-      sorted;
+      return sortedUsers;
     };
   };
 
-  // Função utilitária de cálculo de nível
-  private func _calculateLevel(xp : Nat) : Nat {
-    if (xp < 1000) { 1 } else if (xp < 2500) { 2 } else if (xp < 5000) { 3 } else if (xp < 8000) {
-      4;
-    } else if (xp < 12000) { 5 } else { (xp / 2000) + 1 };
-  };
-
-  // Health check
   public query func greet(name : Text) : async Text {
     "Hello, " # name # "! Welcome to Gami on ICP!";
   };

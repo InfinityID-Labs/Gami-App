@@ -1,3 +1,12 @@
+import { checkBackendHealth } from '../../services/healthCheck';
+const [backendHealth, setBackendHealth] = useState<string | null>(null);
+// Health check do backend
+useEffect(() => {
+  (async () => {
+    const health = await checkBackendHealth();
+    setBackendHealth(health);
+  })();
+}, []);
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -7,6 +16,7 @@ import {
   TouchableOpacity,
   Image,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import Toast from '@/components/Toast';
 import { Settings, Trophy, Star, Zap, Calendar, Target, Award, Shield, Bell, CircleHelp as HelpCircle, LogOut, ChevronRight, Link as LinkIcon, Coins } from 'lucide-react-native';
@@ -15,28 +25,11 @@ import { useGamiBackend } from '@/hooks/useGamiBackend';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-  unlocked: boolean;
-  progress?: number;
-  total?: number;
-}
-
-interface ConnectedApp {
-  id: string;
-  name: string;
-  icon: string;
-  connected: boolean;
-  lastSync: string;
-}
-
 export default function ProfileScreen() {
   const { wallet, transactions, isAuthenticated, logout } = useBlockchain();
   const { getUserProfile } = useGamiBackend();
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
@@ -54,8 +47,8 @@ export default function ProfileScreen() {
     await logout();
     Toast.show({
       type: 'success',
-      text1: 'Logout ICP realizado',
-      text2: 'Você saiu da sua conta Internet Identity.'
+      text1: 'Logged out from ICP',
+      text2: 'You have signed out from your Internet Identity account.'
     });
     router.replace('/(auth)/login');
   };
@@ -74,239 +67,120 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     (async () => {
+      setLoading(true);
       try {
         const profile = await getUserProfile();
-        if (profile) setUserProfile(profile);
-        // const lb = await getLeaderboard();
-        // setLeaderboard(lb);
+        setUserProfile(profile);
       } catch (e) {
-        // fallback para mock
-        setUserProfile({
-          name: 'Alex Thompson',
-          username: '@gamemaster_alex',
-          avatar: 'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg',
-          level: 12,
-          xp: 2847,
-          joinDate: 'January 2024',
-          totalRewards: 156.75,
-          globalRank: 1247,
+        setUserProfile(null);
+        Toast.show({
+          type: 'error',
+          text1: 'Profile loading error',
+          text2: 'Could not load your profile from backend.'
         });
       }
+      setLoading(false);
     })();
   }, []);
-  if (!userProfile) return <Text>Loading profile...</Text>;
 
-  const achievements: Achievement[] = [
-    {
-      id: '1',
-      title: 'Early Adopter',
-      description: 'Joined in the first month',
-      icon: <Star size={20} color="#FFD700" />,
-      unlocked: true,
-    },
-    {
-      id: '2',
-      title: 'Quest Crusher',
-      description: 'Complete 25 quests',
-      icon: <Target size={20} color="#10B981" />,
-      unlocked: true,
-    },
-    {
-      id: '3',
-      title: 'Level Master',
-      description: 'Reach level 15',
-      icon: <Trophy size={20} color="#8B5CF6" />,
-      unlocked: false,
-      progress: 12,
-      total: 15,
-    },
-    {
-      id: '4',
-      title: 'Streak Legend',
-      description: 'Maintain 30-day streak',
-      icon: <Zap size={20} color="#F59E0B" />,
-      unlocked: false,
-      progress: 8,
-      total: 30,
-    },
-  ];
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <ActivityIndicator size="large" color="#8B5CF6" />
+        <Text style={{ marginTop: 16, fontSize: 18, color: '#8B5CF6', fontWeight: 'bold' }}>Loading profile...</Text>
+      </View>
+    );
+  }
+  if (!userProfile) {
+    return (
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={{ padding: 24, alignItems: 'center' }}>
+          <Text style={{ color: '#EF4444', fontWeight: 'bold', marginBottom: 16 }}>Could not load your profile.</Text>
+          {backendHealth && (
+            <Text style={{ color: backendHealth.includes('gami') ? '#22C55E' : '#EF4444', marginTop: 8, fontSize: 12 }}>
+              Backend health: {backendHealth}
+            </Text>
+          )}
+        </View>
+        {/* Settings */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Settings</Text>
 
-  const connectedApps: ConnectedApp[] = [
-    {
-      id: '1',
-      name: 'Fitness Tracker',
-      icon: 'https://images.pexels.com/photos/4498318/pexels-photo-4498318.jpeg',
-      connected: true,
-      lastSync: '2 hours ago',
-    },
-    {
-      id: '2',
-      name: 'Productivity Timer',
-      icon: 'https://images.pexels.com/photos/159888/pexels-photo-159888.jpeg',
-      connected: true,
-      lastSync: '1 hour ago',
-    },
-    {
-      id: '3',
-      name: 'Coffee Rewards',
-      icon: 'https://images.pexels.com/photos/312418/pexels-photo-312418.jpeg',
-      connected: false,
-      lastSync: 'Never',
-    },
-  ];
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Bell size={20} color="#6B7280" />
+              <Text style={styles.settingLabel}>Push Notifications</Text>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={setNotificationsEnabled}
+              trackColor={{ false: '#E2E8F0', true: '#8B5CF6' }}
+              thumbColor={notificationsEnabled ? '#FFFFFF' : '#FFFFFF'}
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Shield size={20} color="#6B7280" />
+              <Text style={styles.settingLabel}>Privacy Mode</Text>
+            </View>
+            <Switch
+              value={privacyMode}
+              onValueChange={setPrivacyMode}
+              trackColor={{ false: '#E2E8F0', true: '#8B5CF6' }}
+              thumbColor={privacyMode ? '#FFFFFF' : '#FFFFFF'}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <LinkIcon size={20} color="#6B7280" />
+              <Text style={styles.settingLabel}>Blockchain Wallet</Text>
+            </View>
+            <TouchableOpacity onPress={handleConnectWallet}>
+              <ChevronRight size={20} color="#9CA3AF" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.settingItem} onPress={handleHelp}>
+            <View style={styles.settingInfo}>
+              <HelpCircle size={20} color="#6B7280" />
+              <Text style={styles.settingLabel}>Help & Support</Text>
+            </View>
+            <ChevronRight size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.settingItem, styles.logoutItem]} onPress={handleSignOut}>
+            <View style={styles.settingInfo}>
+              <LogOut size={20} color="#EF4444" />
+              <Text style={[styles.settingLabel, styles.logoutText]}>Sign Out</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // Exemplo: função para cadastrar um novo perfil no backend Motoko
+  const handleCreateProfile = async (username: string) => {
+    try {
+      const { icpService } = require('../../services/icpService');
+      const result = await icpService.createUserProfile(username);
+      if (result) {
+        Toast.show({ type: 'success', text1: 'Profile created!', text2: 'Your profile was created in the backend.' });
+        setUserProfile(result);
+      } else {
+        Toast.show({ type: 'error', text1: 'Profile creation error', text2: 'Check if the username already exists.' });
+      }
+    } catch (e) {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'Could not create the profile.' });
+    }
+  };
+
+  // ...removido mock de connectedApps...
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <Image source={{ uri: userProfile.avatar }} style={styles.profileAvatar} />
-        <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{userProfile.name}</Text>
-          <Text style={styles.profileUsername}>{userProfile.username}</Text>
-          <View style={styles.profileBadge}>
-            <Award size={16} color="#8B5CF6" />
-            <Text style={styles.profileLevel}>Level {userProfile.level}</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.settingsButton}>
-          <Settings size={24} color="#6B7280" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Blockchain Transactions */}
-      {wallet && transactions.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Transactions</Text>
-          {transactions.slice(0, 5).map((transaction) => (
-            <View key={transaction.id} style={styles.transactionItem}>
-              <View style={styles.transactionIcon}>
-                <Coins size={16} color="#8B5CF6" />
-              </View>
-              <View style={styles.transactionInfo}>
-                <Text style={styles.transactionType}>
-                  {transaction.type.replace('_', ' ').toUpperCase()}
-                </Text>
-                <Text style={styles.transactionTime}>
-                  {transaction.timestamp.toLocaleDateString()}
-                </Text>
-              </View>
-              <View style={styles.transactionAmount}>
-                <Text style={styles.amountText}>
-                  +{transaction.amount} {transaction.token}
-                </Text>
-                <View
-                  style={[
-
-                    { backgroundColor: transaction.status === 'completed' ? '#10B981' : '#F59E0B' },
-                  ]}
-                />
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-      {/* Stats Cards */}
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <Trophy size={20} color="#F59E0B" />
-          <Text style={styles.statNumber}>{userProfile.globalRank}</Text>
-          <Text style={styles.statLabel}>Global Rank</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Zap size={20} color="#8B5CF6" />
-          <Text style={styles.statNumber}>{userProfile.xp}</Text>
-          <Text style={styles.statLabel}>Total XP</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Star size={20} color="#10B981" />
-          <Text style={styles.statNumber}>${userProfile.totalRewards}</Text>
-          <Text style={styles.statLabel}>Rewards</Text>
-        </View>
-
-        <View style={styles.statCard}>
-          <Calendar size={20} color="#6B7280" />
-          <Text style={styles.statNumber}>{userProfile.joinDate}</Text>
-          <Text style={styles.statLabel}>Member Since</Text>
-        </View>
-      </View>
-
-      {/* Achievements */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Achievements</Text>
-        <View style={styles.achievementsGrid}>
-          {achievements.map((achievement) => (
-            <View
-              key={achievement.id}
-              style={[
-                styles.achievementCard,
-                !achievement.unlocked && styles.achievementLocked,
-              ]}
-            >
-              <View style={styles.achievementIcon}>
-                {achievement.icon}
-              </View>
-              <Text style={styles.achievementTitle}>{achievement.title}</Text>
-              <Text style={styles.achievementDescription}>{achievement.description}</Text>
-
-              {!achievement.unlocked && achievement.progress && (
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${(achievement.progress / achievement.total!) * 100}%` },
-                      ]}
-                    />
-                  </View>
-                  <Text style={styles.progressText}>
-                    {achievement.progress}/{achievement.total}
-                  </Text>
-                </View>
-              )}
-
-              {achievement.unlocked && (
-                <View style={styles.unlockedBadge}>
-                  <Text style={styles.unlockedText}>Unlocked</Text>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Connected Apps */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Connected Apps</Text>
-        {connectedApps.map((app) => (
-          <TouchableOpacity key={app.id} style={styles.appItem}>
-            <Image source={{ uri: app.icon }} style={styles.appIcon} />
-            <View style={styles.appInfo}>
-              <Text style={styles.appName}>{app.name}</Text>
-              <Text style={styles.lastSync}>Last sync: {app.lastSync}</Text>
-            </View>
-            <View style={styles.connectionStatus}>
-              <View
-                style={[
-
-                  { backgroundColor: app.connected ? '#10B981' : '#EF4444' },
-                ]}
-              />
-              <Text
-                style={[
-                  styles.statusText,
-                  { color: app.connected ? '#10B981' : '#EF4444' },
-                ]}
-              >
-                {app.connected ? 'Connected' : 'Disconnected'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Settings */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Settings</Text>
 

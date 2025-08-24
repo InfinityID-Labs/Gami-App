@@ -26,6 +26,11 @@
     "token_ledger": {
       "type": "motoko",
       "main": "src/token_ledger/main.mo"
+    },
+    "internet_identity": {
+      "type": "custom",
+      "candid": "src/declarations/internet_identity/internet_identity.did",
+      "wasm": "src/declarations/internet_identity/internet_identity.wasm"
     }
   },
   "networks": {

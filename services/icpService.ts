@@ -48,8 +48,14 @@ export class ICPService {
   // URLs dos canisters (podem vir do .env)
   private getCanisterIds() {
     return {
-      backend: process.env.CANISTER_ID_GAMI_BACKEND || 'uxrrr-q7777-77774-qaaaq-cai',
-      host: process.env.REACT_APP_IC_HOST || 'http://localhost:4943'
+      backend: 'uxrrr-q7777-77774-qaaaq-cai',
+      host: 'https://ic0.app',
+      leaderboard: 'umunu-kh777-77774-qaaca-cai',
+      quest_rewards: 'ulvla-h7777-77774-qaacq-cai',
+      token_ledger: 'ucwa4-rx777-77774-qaada-cai',
+      user_profiles: 'ufxgi-4p777-77774-qaadq-cai',
+      gami_frontend: 'u6s2n-gx777-77774-qaaba-cai',
+      internet_identity: 'uzt4z-lp777-77774-qaabq-cai'
     };
   }
 
@@ -137,15 +143,16 @@ export class ICPService {
         // Mobile: Use WebBrowser to open Internet Identity with a simplified flow
         console.log('Starting Internet Identity login on mobile...');
 
-        const redirectURI = AuthSession.makeRedirectUri({
-          scheme: 'gamiapp',
-          path: 'auth/callback',
-        });
 
-        console.log('Redirect URI:', redirectURI);
 
-        // Create a more direct Internet Identity URL
-        const authUrl = `https://identity.ic0.app/?redirect_uri=${encodeURIComponent(redirectURI)}`;
+        // Sempre usar o endpoint oficial do ICP para mobile
+        // Pega o canisterId do backend dinamicamente
+        const { backend } = this.getCanisterIds();
+        const prodIdentityUrl = 'https://identity.ic0.app';
+        // Monta a URL pública do canister para callback
+        const redirectURI = `https://${backend}.icp0.io/callback`;
+        const authUrl = `${prodIdentityUrl}/?canister=${backend}&redirect_uri=${encodeURIComponent(redirectURI)}`;
+        console.log('DEBUG ICP LOGIN:', { authUrl, redirectURI });
 
         const result = await WebBrowser.openAuthSessionAsync(
           authUrl,
@@ -157,29 +164,27 @@ export class ICPService {
 
         console.log('WebBrowser result:', result);
 
-        if (result.type === 'success' || result.type === 'cancel') {
-          // Even if cancelled, we'll check if user completed the auth in the browser
-          // Generate a mock principal for demo purposes
-          // In a real implementation, you'd extract this from the callback URL
-          const timestamp = Date.now();
-          const mockPrincipal = `user-${timestamp.toString().slice(-8)}-cai`;
-          await AsyncStorage.setItem('icp_principal', mockPrincipal);
-
-          console.log('Mobile login completed with principal:', mockPrincipal);
-
-          return {
-            isAuthenticated: true,
-            principal: mockPrincipal,
-            identity: null,
-          };
-        } else {
-          console.log('Login was cancelled or failed');
-          return {
-            isAuthenticated: false,
-            principal: null,
-            identity: null,
-          };
+        if (result.type === 'success' && result.url) {
+          // Extrai o principal da URL de retorno (deep link)
+          const url = new URL(result.url);
+          const principal = url.searchParams.get('principal');
+          if (principal) {
+            await AsyncStorage.setItem('icp_principal', principal);
+            console.log('Mobile login completed with principal:', principal);
+            return {
+              isAuthenticated: true,
+              principal,
+              identity: null,
+            };
+          }
         }
+        // Se não conseguiu autenticar
+        console.log('Login was cancelled or failed');
+        return {
+          isAuthenticated: false,
+          principal: null,
+          identity: null,
+        };
       }
     } catch (error) {
       console.error('Login failed:', error);
@@ -233,36 +238,6 @@ export class ICPService {
     };
   }
 
-  // Mock blockchain operations for demo
-  async getTokenBalance(tokenType: string): Promise<number> {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const balances: Record<string, number> = {
-      GAMI: Math.floor(Math.random() * 500) + 200,
-      QUEST: Math.floor(Math.random() * 100) + 50,
-      LOCAL: Math.floor(Math.random() * 150) + 75,
-      FIT: Math.floor(Math.random() * 200) + 100,
-      PROD: Math.floor(Math.random() * 100) + 50,
-    };
-
-    return balances[tokenType] || 0;
-  }
-
-  async completeQuest(questId: string): Promise<{ success: boolean; reward: number }> {
-    // Simulate blockchain transaction
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const reward = Math.floor(Math.random() * 100) + 25;
-    const success = Math.random() > 0.1; // 90% success rate
-    return { success, reward };
-  }
-
-  async transferTokens(to: string, amount: number, tokenType: string): Promise<boolean> {
-    // Simulate blockchain transaction
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    return Math.random() > 0.05; // 95% success rate
-  }
 
   // ==================== MÉTODOS DO BACKEND MOTOKO ====================
 

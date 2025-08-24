@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>GamiApp - Autenticação</title>
+  <script>
+    // Extrai parâmetros do hash ou query
+    function getParams() {
+      const params = {};
+      const query = window.location.hash.substring(1) || window.location.search.substring(1);
+      query.split('&').forEach(pair => {
+        const [key, value] = pair.split('=');
+        if (key) params[key] = decodeURIComponent(value);
+      });
+      return params;
+    }
+
+    window.onload = function () {
+      const params = getParams();
+      // Para debug
+      document.getElementById('status').innerText = 'Processando login...';
+
+      // Tenta redirecionar para o app via deep link
+      if (params['principal']) {
+        // Exemplo: gamiapp://auth/callback?principal=xxxx
+        window.location.href = `gamiapp://auth/callback?principal=${params['principal']}`;
+      } else {
+        // fallback: fecha a janela
+        window.close();
+      }
+    }
+  </script>
+</head>
+
+<body>
+  <h2 id="status">Aguardando autenticação...</h2>
+</body>
+
+</html>

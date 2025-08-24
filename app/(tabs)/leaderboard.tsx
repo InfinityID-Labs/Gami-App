@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -61,68 +61,33 @@ export default function LeaderboardScreen() {
     },
   ];
 
-  const leaderboardData: LeaderboardEntry[] = [
-    {
-      id: '1',
-      rank: 1,
-      username: 'QuestMaster99',
-      avatar: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg',
-      xp: 15847,
-      level: 28,
-      streak: 47,
-      change: 2,
-    },
-    {
-      id: '2',
-      rank: 2,
-      username: 'FitnessGuru',
-      avatar: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg',
-      xp: 14523,
-      level: 26,
-      streak: 23,
-      change: -1,
-    },
-    {
-      id: '3',
-      rank: 3,
-      username: 'LocalExplorer',
-      avatar: 'https://images.pexels.com/photos/1181519/pexels-photo-1181519.jpeg',
-      xp: 13891,
-      level: 25,
-      streak: 34,
-      change: 1,
-    },
-    {
-      id: '4',
-      rank: 4,
-      username: 'ProductivePro',
-      avatar: 'https://images.pexels.com/photos/1043471/pexels-photo-1043471.jpeg',
-      xp: 12456,
-      level: 23,
-      streak: 18,
-      change: 0,
-    },
-    {
-      id: '5',
-      rank: 5,
-      username: 'RewardHunter',
-      avatar: 'https://images.pexels.com/photos/1438081/pexels-photo-1438081.jpeg',
-      xp: 11234,
-      level: 21,
-      streak: 29,
-      change: 3,
-    },
-    {
-      id: '6',
-      rank: 6,
-      username: 'GamerAlex',
-      avatar: 'https://images.pexels.com/photos/1040881/pexels-photo-1040881.jpeg',
-      xp: 10987,
-      level: 20,
-      streak: 12,
-      change: -2,
-    },
-  ];
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const { icpService } = require('../../services/icpService');
+        const data = await icpService.getLeaderboard();
+        setLeaderboardData(
+          (data || []).map((entry: any, idx: number) => ({
+            id: entry.id.toString(),
+            rank: idx + 1,
+            username: entry.username,
+            avatar: '', // Adapte se backend fornecer avatar
+            xp: Number(entry.xp),
+            level: Number(entry.level),
+            streak: 0, // Adapte se backend fornecer streak
+            change: 0, // Adapte se backend fornecer change
+          }))
+        );
+      } catch (e) {
+        setLeaderboardData([]);
+      }
+      setLoading(false);
+    };
+    fetchLeaderboard();
+  }, []);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {

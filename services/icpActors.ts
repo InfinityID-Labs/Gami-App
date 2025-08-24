@@ -6,8 +6,8 @@ import type { Identity } from '@dfinity/agent';
 import type { ActorSubclass, ActorMethod } from '@dfinity/agent';
 
 // Substitua pelos canister IDs reais do deploy
-export const gami_backend_id = process.env.GAMI_BACKEND_CANISTER_ID || 'rrkah-fqaaa-aaaaa-aaaaq-cai';
-export const token_ledger_id = process.env.TOKEN_LEDGER_CANISTER_ID || 'ryjl3-tyaaa-aaaaa-aaaba-cai';
+export const gami_backend_id = 'uxrrr-q7777-77774-qaaaq-cai';
+export const token_ledger_id = 'ucwa4-rx777-77774-qaada-cai';
 
 export interface GamiBackendActorInterface extends ActorSubclass<Record<string, ActorMethod>> { }
 

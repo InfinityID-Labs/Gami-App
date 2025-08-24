@@ -17,7 +17,7 @@
     "canisters:deploy": "dfx deploy",
     "canisters:build": "dfx build",
     "update-env": "./update-env.sh",
-    "initial": "npm run canisters:stop && npm run canisters:clean && npm run canisters:start && npm run canisters:deploy && npm run update-env && npm run callback-server & npm run dev"
+    "initial": "npm run canisters:stop && npm run canisters:clean && npm run canisters:start && npm run canisters:deploy && npm run update-env && npm run dev"
   },
   "dependencies": {
     "@dfinity/agent": "^3.1.0",
