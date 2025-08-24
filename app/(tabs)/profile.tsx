@@ -1,25 +1,15 @@
 import { checkBackendHealth } from '../../services/healthCheck';
-const [backendHealth, setBackendHealth] = useState<string | null>(null);
-// Health check do backend
-useEffect(() => {
-  (async () => {
-    const health = await checkBackendHealth();
-    setBackendHealth(health);
-  })();
-}, []);
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  Image,
-  Switch,
-  ActivityIndicator,
+  TouchableOpacity, Switch,
+  ActivityIndicator
 } from 'react-native';
 import Toast from '@/components/Toast';
-import { Settings, Trophy, Star, Zap, Calendar, Target, Award, Shield, Bell, CircleHelp as HelpCircle, LogOut, ChevronRight, Link as LinkIcon, Coins } from 'lucide-react-native';
+import { Shield, Bell, CircleHelp as HelpCircle, LogOut, ChevronRight, Link as LinkIcon } from 'lucide-react-native';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 import { useGamiBackend } from '@/hooks/useGamiBackend';
 import { router } from 'expo-router';
@@ -33,6 +23,14 @@ export default function ProfileScreen() {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [backendHealth, setBackendHealth] = useState<string | null>(null);
+  // Health check do backend
+  useEffect(() => {
+    (async () => {
+      const health = await checkBackendHealth();
+      setBackendHealth(health);
+    })();
+  }, []);
 
   const handleSignOut = async () => {
     const { icpService } = require('../../services/icpService');
