@@ -16,10 +16,10 @@ interface MCPIntegrationProps {
   onDisconnectAgent: (agentId: string) => void;
 }
 
-export default function MCPIntegration({ 
-  agents, 
-  onConnectAgent, 
-  onDisconnectAgent 
+export default function MCPIntegration({
+  agents,
+  onConnectAgent,
+  onDisconnectAgent
 }: MCPIntegrationProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -40,11 +40,9 @@ export default function MCPIntegration({
         <Bot size={24} color="#8B5CF6" />
         <Text style={styles.title}>MCP Agents</Text>
       </View>
-      
       <Text style={styles.description}>
         Connect with AI agents to automatically earn rewards from various platforms and activities.
       </Text>
-
       {agents.map((agent) => (
         <View key={agent.id} style={styles.agentCard}>
           <View style={styles.agentHeader}>
@@ -55,7 +53,6 @@ export default function MCPIntegration({
                 <Text style={styles.lastActivity}>Last active: {agent.lastActivity}</Text>
               )}
             </View>
-            
             <View style={styles.statusContainer}>
               <View
                 style={[
@@ -79,8 +76,8 @@ export default function MCPIntegration({
               styles.actionButton,
               agent.status === 'connected' && styles.disconnectButton,
             ]}
-            onPress={() => 
-              agent.status === 'connected' 
+            onPress={() =>
+              agent.status === 'connected'
                 ? onDisconnectAgent(agent.id)
                 : onConnectAgent(agent.id)
             }

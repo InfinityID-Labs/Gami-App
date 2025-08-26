@@ -7,8 +7,8 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
 } from 'react-native';
+import Toast from '@/components/Toast';
 import {
   Search,
   Filter,
@@ -17,12 +17,9 @@ import {
   Zap,
   Users,
   MapPin,
-  Smartphone,
-  Coffee,
-  Dumbbell,
-  Shield,
+  Smartphone, Dumbbell,
+  Shield
 } from 'lucide-react-native';
-import { router } from 'expo-router';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -64,8 +61,6 @@ export default function QuestsScreen() {
       setUserXP(stats.xp);
       setUserLevel(stats.level);
       setCompletedQuests(stats.completedQuests);
-      
-      // Load live stats from storage
       const storedStats = await AsyncStorage.getItem('liveStats');
       if (storedStats) {
         setLiveStats(JSON.parse(storedStats));
@@ -156,19 +151,17 @@ export default function QuestsScreen() {
 
   const handleJoinQuest = async (quest: Quest) => {
     if (completedQuests.includes(quest.id)) {
-      Alert.alert(
-        'Quest Already Completed! ✅',
-        `You've already completed "${quest.title}" and earned your rewards!`,
-        [{ text: 'Awesome!', style: 'default' }]
-      );
+      Toast.show({
+        type: 'info',
+        text1: 'Quest Already Completed! ✅',
+        text2: `You've already completed "${quest.title}" and earned your rewards!`,
+      });
       return;
     }
-
     try {
       if (quest.onChain && wallet) {
-        const success = await completeQuestOnChain(quest.id);
-        if (success) {
-          // Update live stats
+        const result = await completeQuestOnChain(quest.id);
+        if (result) {
           const newXP = userXP + quest.xpReward;
           const newLevel = Math.floor(newXP / 1000) + 1;
           setUserXP(newXP);
@@ -179,28 +172,20 @@ export default function QuestsScreen() {
             questsCompleted: prev.questsCompleted + 1,
             currentStreak: prev.currentStreak + 1,
           }));
-
-          Alert.alert(
-            'Quest Completed! 🎉',
-            `Congratulations! You've earned:\n\n+${quest.xpReward} XP${quest.moneyReward ? `\n+$${quest.moneyReward}` : ''}\n\nTotal XP: ${newXP}\nLevel: ${newLevel}`,
-            [{ text: 'Amazing!', style: 'default' }]
-          );
+          Toast.show({
+            type: 'success',
+            text1: 'Quest Completed! 🎉',
+            text2: `Congratulations! You've earned:\n\n+${quest.xpReward} XP${quest.moneyReward ? `\n+$${quest.moneyReward}` : ''}\n\nTotal XP: ${newXP}\nLevel: ${newLevel}`,
+          });
         } else {
-          Alert.alert(
-            'Connection Issue',
-            'Unable to join quest on blockchain. Please check your wallet connection and try again.',
-            [{ text: 'Retry', onPress: () => handleJoinQuest(quest) }, { text: 'Cancel', style: 'cancel' }]
-          );
+          Toast.show({ type: 'error', text1: 'Error', text2: 'Could not complete the quest.' });
         }
       } else if (quest.onChain && !wallet) {
-        Alert.alert(
-          'Wallet Required',
-          'This quest requires a blockchain wallet. Connect your Internet Identity to participate in on-chain quests.',
-          [
-            { text: 'Connect Wallet', onPress: () => router.push('/(tabs)/profile') },
-            { text: 'Skip', style: 'cancel' }
-          ]
-        );
+        Toast.show({
+          type: 'info',
+          text1: 'Wallet Required',
+          text2: 'This quest requires a blockchain wallet. Connect your Internet Identity to participate in on-chain quests.',
+        });
       } else {
         // Simulate quest completion for non-blockchain quests
         const newXP = userXP + quest.xpReward;
@@ -210,26 +195,23 @@ export default function QuestsScreen() {
           questsCompleted: liveStats.questsCompleted + 1,
           currentStreak: liveStats.currentStreak + 1,
         };
-        
         setUserXP(newXP);
         setUserLevel(newLevel);
         setCompletedQuests(prev => [...prev, quest.id]);
-        
-        // Save all data
         await updateUserStats(newXP, newLevel, [...completedQuests, quest.id]);
         await saveLiveStats(newLiveStats);
-        Alert.alert(
-          'Quest Completed! ⚡',
-          `Excellent work! You've earned:\n\n+${quest.xpReward} XP${quest.moneyReward ? `\n+$${quest.moneyReward}` : ''}\n\nTotal XP: ${newXP}\nLevel: ${newLevel}`,
-          [{ text: 'Keep Going!', style: 'default' }]
-        );
+        Toast.show({
+          type: 'success',
+          text1: 'Quest Completed! ⚡',
+          text2: `Excellent work! You've earned:\n\n+${quest.xpReward} XP${quest.moneyReward ? `\n+$${quest.moneyReward}` : ''}\n\nTotal XP: ${newXP}\nLevel: ${newLevel}`,
+        });
       }
     } catch (error) {
-      Alert.alert(
-        'Oops!',
-        'Something went wrong while joining the quest. Please try again.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'Oops!',
+        text2: 'Something went wrong while joining the quest. Please try again.',
+      });
     }
   };
 
@@ -263,7 +245,7 @@ export default function QuestsScreen() {
 
   const filteredQuests = quests.filter(quest => {
     const matchesSearch = quest.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         quest.description.toLowerCase().includes(searchQuery.toLowerCase());
+      quest.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = selectedFilter === 'all' || quest.category === selectedFilter;
     return matchesSearch && matchesFilter;
   });
@@ -392,7 +374,7 @@ export default function QuestsScreen() {
                   </View>
                 )}
               </View>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.joinButton}
                 onPress={() => handleJoinQuest(quest)}
               >
@@ -420,6 +402,21 @@ export default function QuestsScreen() {
 }
 
 const styles = StyleSheet.create({
+  liveStatsHeader: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  statItem: {
+    fontSize: 12,
+    color: '#64748B',
+    fontFamily: 'Inter-Medium',
+    marginRight: 8,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',

@@ -1,0 +1,46 @@
+type UserProfile = 
+ record {
+   globalRank: nat;
+   id: UserId;
+   joinDate: int;
+   level: nat;
+   totalRewards: float64;
+   username: text;
+   xp: nat;
+ };
+type UserId = principal;
+type Result_1 = 
+ variant {
+   err: text;
+   ok: Quest;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok: UserProfile;
+ };
+type QuestId = text;
+type Quest = 
+ record {
+   active: bool;
+   category: text;
+   description: text;
+   difficulty: text;
+   id: QuestId;
+   moneyReward: opt float64;
+   participants: nat;
+   sponsor: text;
+   timeLimit: text;
+   title: text;
+   xpReward: nat;
+ };
+service : {
+  createQuest: (id: QuestId, title: text, description: text, category: 
+   text, xpReward: nat, moneyReward: opt float64, timeLimit: text,
+   difficulty: text, sponsor: text) -> (Result_1);
+  createUserProfile: (username: text) -> (Result);
+  getLeaderboard: (limit: opt nat) -> (vec UserProfile) query;
+  getQuests: () -> (vec Quest) query;
+  getUserProfile: (userId: opt UserId) -> (opt UserProfile) query;
+  greet: (name: text) -> (text) query;
+}

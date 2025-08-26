@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Wallet, Shield, Coins, ExternalLink } from 'lucide-react-native';
 import { useBlockchain } from '@/contexts/BlockchainContext';
@@ -31,7 +31,6 @@ export default function BlockchainIntegration() {
         <Wallet size={24} color="#8B5CF6" />
         <Text style={styles.title}>Blockchain Wallet</Text>
       </View>
-
       {!wallet ? (
         <View style={styles.connectSection}>
           <Shield size={48} color="#8B5CF6" />
@@ -39,7 +38,6 @@ export default function BlockchainIntegration() {
           <Text style={styles.connectDescription}>
             Securely store your rewards on the Internet Computer blockchain. Your tokens will be truly owned by you.
           </Text>
-          
           <TouchableOpacity
             style={[styles.connectButton, isConnecting && styles.connectingButton]}
             onPress={handleConnect}
@@ -49,7 +47,6 @@ export default function BlockchainIntegration() {
               {isConnecting ? 'Connecting...' : 'Connect Internet Identity'}
             </Text>
           </TouchableOpacity>
-
           <View style={styles.benefitsContainer}>
             <Text style={styles.benefitsTitle}>Benefits:</Text>
             <Text style={styles.benefitItem}>• True ownership of rewards</Text>
@@ -65,12 +62,10 @@ export default function BlockchainIntegration() {
             <Text style={styles.walletAddress}>{wallet.principal}</Text>
             <Text style={styles.networkLabel}>Internet Computer Network</Text>
           </View>
-
           <View style={styles.balanceCard}>
             <Text style={styles.balanceLabel}>Total Portfolio Value</Text>
             <Text style={styles.balanceAmount}>${wallet.balance.toFixed(2)}</Text>
           </View>
-
           <View style={styles.tokensSection}>
             <Text style={styles.tokensTitle}>Reward Tokens</Text>
             {wallet.tokens.map((token) => (
@@ -88,18 +83,15 @@ export default function BlockchainIntegration() {
               </View>
             ))}
           </View>
-
           <View style={styles.actionsContainer}>
             <TouchableOpacity style={styles.actionButton} onPress={handleRefresh}>
               <Coins size={16} color="#8B5CF6" />
               <Text style={styles.actionButtonText}>Refresh</Text>
             </TouchableOpacity>
-            
             <TouchableOpacity style={styles.actionButton}>
               <ExternalLink size={16} color="#8B5CF6" />
               <Text style={styles.actionButtonText}>View on Explorer</Text>
             </TouchableOpacity>
-            
             <TouchableOpacity
               style={styles.disconnectButton}
               onPress={handleDisconnect}

@@ -6,62 +6,79 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import Toast from '@/components/Toast';
 import { router } from 'expo-router';
 import { Zap, Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react-native';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 
 export default function LoginScreen() {
+  React.useEffect(() => {
+    const checkAuth = async () => {
+      const { icpService } = require('../../services/icpService');
+      const auth = await icpService.getStoredAuth();
+      if (auth.isAuthenticated) {
+        router.replace('/(tabs)');
+      }
+    };
+    checkAuth();
+    if (typeof document !== 'undefined') {
+      const onVisibilityChange = () => {
+        if (!document.hidden) {
+          checkAuth();
+        }
+      };
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      return () => {
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+      };
+    }
+  }, []);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { connectWallet } = useBlockchain();
-
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const buttonScaleAnim = useRef(new Animated.Value(1)).current;
   const isMounted = useRef(true);
-
   React.useEffect(() => {
     return () => {
       isMounted.current = false;
     };
   }, []);
-
   const handleLogin = async () => {
     if (!email || !password) {
-      // Shake animation for validation
       Animated.sequence([
         Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: -10, duration: 100, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
       ]).start();
-      
-      Alert.alert(
-        'Missing Information',
-        'Please enter both your email and password to continue.',
-        [{ text: 'OK', style: 'default' }]
-      );
+
+      Toast.show({
+        type: 'error',
+        text1: 'Informação faltando',
+        text2: 'Preencha e-mail e senha para continuar.',
+      });
       return;
     }
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert(
-        'Invalid Email',
-        'Please enter a valid email address.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Toast.show({
+        type: 'error',
+        text1: 'E-mail inválido',
+        text2: 'Digite um e-mail válido.',
+      });
       return;
     }
 
     setIsLoading(true);
-    
+
     // Button press animation
     Animated.sequence([
       Animated.timing(buttonScaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
@@ -72,45 +89,65 @@ export default function LoginScreen() {
     setTimeout(() => {
       if (isMounted.current) {
         setIsLoading(false);
-        Alert.alert(
-          'Welcome Back, Champion! 🎉',
-          'Ready to continue your quest for rewards?',
-          [
-            {
-              text: 'Let\'s Go!',
-              onPress: () => router.replace('/(tabs)'),
-            },
-          ]
-        );
+        Toast.show({
+          type: 'success',
+          text1: 'Welcome Back, Champion! 🎉',
+          text2: 'Ready to continue your quest for rewards?',
+          onHide: () => router.replace('/(tabs)'),
+        });
       }
     }, 2000);
   };
 
   const handleBlockchainLogin = async () => {
     setIsLoading(true);
-    const success = await connectWallet();
-    if (isMounted.current) {
-      setIsLoading(false);
-    }
-    
-    if (success) {
-      Alert.alert(
-        'Blockchain Connected! ⚡',
-        'Your Internet Identity is now linked. Your rewards are secured on-chain!',
-        [
-          {
-            text: 'Amazing!',
-            onPress: () => router.replace('/(tabs)'),
-          },
-        ]
-      );
-    } else {
-      Alert.alert('Connection Failed', 'Please try connecting your Internet Identity again.');
+
+    try {
+      Toast.show({
+        type: 'info',
+        text1: 'Abrindo Internet Identity...',
+        text2: 'Aguarde enquanto abrimos o navegador',
+      });
+
+      const success = await connectWallet();
+
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
+
+      // Verifica autenticação real após o login ICP
+      const { icpService } = require('../../services/icpService');
+      const auth = await icpService.getStoredAuth();
+
+      if (auth.isAuthenticated) {
+        Toast.show({
+          type: 'success',
+          text1: 'Blockchain Connected! ⚡',
+          text2: 'Seu Internet Identity está vinculado!',
+          onHide: () => router.replace('/(tabs)'),
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: 'Falha no login ICP',
+          text2: 'Tente conectar novamente.',
+        });
+      }
+    } catch (error) {
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
+
+      Toast.show({
+        type: 'error',
+        text1: 'Erro de conexão',
+        text2: 'Não foi possível conectar ao Internet Identity',
+      });
     }
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
@@ -188,7 +225,9 @@ export default function LoginScreen() {
           disabled={isLoading}
         >
           <Shield size={20} color="#FFFFFF" />
-          <Text style={styles.blockchainButtonText}>Connect Internet Identity</Text>
+          <Text style={styles.blockchainButtonText}>
+            {isLoading ? 'Conectando...' : 'Connect Internet Identity'}
+          </Text>
         </TouchableOpacity>
 
         {/* Sign Up Link */}

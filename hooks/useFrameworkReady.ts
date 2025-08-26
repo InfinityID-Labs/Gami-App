@@ -14,7 +14,6 @@ declare global {
   }
 }
 
-// Keep splash screen visible while fonts are loading
 SplashScreen.preventAutoHideAsync();
 
 export function useFrameworkReady() {
