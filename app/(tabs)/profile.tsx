@@ -24,7 +24,6 @@ export default function ProfileScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
   const [backendHealth, setBackendHealth] = useState<string | null>(null);
-  // Health check do backend
   useEffect(() => {
     (async () => {
       const health = await checkBackendHealth();
@@ -52,7 +51,7 @@ export default function ProfileScreen() {
   };
 
   const handleConnectWallet = () => {
-    router.push('/(tabs)'); // Navigate to home where BlockchainIntegration component is
+    router.push('/(tabs)');
   };
 
   const handleHelp = () => {

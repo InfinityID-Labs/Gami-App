@@ -16,7 +16,6 @@ export default function HomeScreen() {
       try {
         let userProfile = await icpService.getUserProfile();
         if (!userProfile) {
-          // Cria perfil automaticamente se não existir
           const username = 'user_' + Date.now();
           userProfile = await icpService.createUserProfile(username);
           if (!userProfile) {
@@ -50,7 +49,6 @@ export default function HomeScreen() {
     );
   }
 
-  // Exibe dados reais do backend
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
       <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#1E293B' }}>Welcome back!</Text>

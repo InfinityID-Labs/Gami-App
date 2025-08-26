@@ -4,12 +4,8 @@ import { Principal } from '@dfinity/principal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-
-// Import das declarações geradas do backend
 import { idlFactory as gamiBackendIdlFactory } from '../src/declarations/gami_backend/gami_backend.did.js';
 
-// Tipos do backend
 export interface UserProfile {
   id: Principal;
   username: string;
@@ -45,11 +41,10 @@ export class ICPService {
   private agent: HttpAgent | null = null;
   private backendActor: any = null;
 
-  // URLs dos canisters (podem vir do .env)
   private getCanisterIds() {
     return {
       backend: 'uxrrr-q7777-77774-qaaaq-cai',
-      host: 'https://ic0.app',
+      host: 'http://localhost:4943/',
       leaderboard: 'umunu-kh777-77774-qaaca-cai',
       quest_rewards: 'ulvla-h7777-77774-qaacq-cai',
       token_ledger: 'ucwa4-rx777-77774-qaada-cai',
@@ -61,12 +56,9 @@ export class ICPService {
 
   async initialize(): Promise<void> {
     try {
-      // Configure WebBrowser for mobile authentication
       if (Platform.OS !== 'web') {
         WebBrowser.maybeCompleteAuthSession();
       }
-
-      // For web platform, use Internet Identity
       if (Platform.OS === 'web') {
         this.authClient = await AuthClient.create({
           idleOptions: {
@@ -74,8 +66,6 @@ export class ICPService {
           },
         });
       }
-
-      // Initialize backend actor
       await this.createBackendActor();
     } catch (error) {
       console.warn('ICP initialization failed, using mock mode:', error);
@@ -85,24 +75,23 @@ export class ICPService {
   private async createBackendActor() {
     try {
       const { backend, host } = this.getCanisterIds();
-
-      // Create agent
       this.agent = new HttpAgent({
         host,
         identity: this.authClient?.getIdentity() || undefined,
       });
-
-      // For local development, fetch root key
-      if (host.includes('localhost')) {
-        await this.agent.fetchRootKey();
+      const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+      if (isLocal) {
+        try {
+          await this.agent.fetchRootKey();
+          console.log('Root key fetched for local development');
+        } catch (e) {
+          console.warn('Could not fetch root key for local IC:', e);
+        }
       }
-
-      // Create backend actor
       this.backendActor = Actor.createActor(gamiBackendIdlFactory, {
         agent: this.agent,
         canisterId: backend,
       });
-
       console.log('Backend actor created successfully');
     } catch (error) {
       console.error('Failed to create backend actor:', error);
@@ -112,18 +101,30 @@ export class ICPService {
   async login(): Promise<ICPAuthState> {
     try {
       if (Platform.OS === 'web' && this.authClient) {
+        const prodIdentityProvider = 'https://identity.ic0.app';
         return new Promise((resolve) => {
           this.authClient!.login({
-            identityProvider: 'https://identity.ic0.app',
+            identityProvider: prodIdentityProvider,
             onSuccess: async () => {
               const identity = this.authClient!.getIdentity();
               const principal = identity.getPrincipal().toString();
-
               await AsyncStorage.setItem('icp_principal', principal);
-
-              // Recreate backend actor with authenticated identity
-              await this.createBackendActor();
-
+              const { backend, host } = this.getCanisterIds();
+              const agent = new HttpAgent({ host, identity });
+              const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+              if (isLocal) {
+                try {
+                  await agent.fetchRootKey();
+                  console.log('Root key fetched for local development (login)');
+                } catch (e) {
+                  console.warn('Could not fetch root key for local IC after login:', e);
+                }
+              }
+              this.agent = agent;
+              this.backendActor = Actor.createActor(gamiBackendIdlFactory, {
+                agent: this.agent,
+                canisterId: backend,
+              });
               resolve({
                 isAuthenticated: true,
                 principal,
@@ -140,20 +141,11 @@ export class ICPService {
           });
         });
       } else {
-        // Mobile: Use WebBrowser to open Internet Identity with a simplified flow
-        console.log('Starting Internet Identity login on mobile...');
-
-
-
-        // Sempre usar o endpoint oficial do ICP para mobile
-        // Pega o canisterId do backend dinamicamente
         const { backend } = this.getCanisterIds();
-        const prodIdentityUrl = 'https://identity.ic0.app';
-        // Monta a URL pública do canister para callback
-        const redirectURI = `https://${backend}.icp0.io/callback`;
-        const authUrl = `${prodIdentityUrl}/?canister=${backend}&redirect_uri=${encodeURIComponent(redirectURI)}`;
+        const prodIdentityUrl = 'http://localhost:4943/?canisterId=uzt4z-lp777-77774-qaabq-cai';
+        const redirectURI = `http://localhost:3000/callback`;
+        const authUrl = `${prodIdentityUrl}&canister=${backend}&redirect_uri=${encodeURIComponent(redirectURI)}`;
         console.log('DEBUG ICP LOGIN:', { authUrl, redirectURI });
-
         const result = await WebBrowser.openAuthSessionAsync(
           authUrl,
           redirectURI,
@@ -161,11 +153,8 @@ export class ICPService {
             showInRecents: false,
           }
         );
-
         console.log('WebBrowser result:', result);
-
         if (result.type === 'success' && result.url) {
-          // Extrai o principal da URL de retorno (deep link)
           const url = new URL(result.url);
           const principal = url.searchParams.get('principal');
           if (principal) {
@@ -178,8 +167,6 @@ export class ICPService {
             };
           }
         }
-        // Se não conseguiu autenticar
-        console.log('Login was cancelled or failed');
         return {
           isAuthenticated: false,
           principal: null,
@@ -210,7 +197,6 @@ export class ICPService {
   async getStoredAuth(): Promise<ICPAuthState> {
     try {
       const principal = await AsyncStorage.getItem('icp_principal');
-
       if (principal) {
         if (Platform.OS === 'web' && this.authClient) {
           const identity = this.authClient.getIdentity();
@@ -230,7 +216,6 @@ export class ICPService {
     } catch (error) {
       console.error('Failed to get stored auth:', error);
     }
-
     return {
       isAuthenticated: false,
       principal: null,
@@ -239,18 +224,13 @@ export class ICPService {
   }
 
 
-  // ==================== MÉTODOS DO BACKEND MOTOKO ====================
-
-  // Criar perfil de usuário
   async createUserProfile(username: string): Promise<UserProfile | null> {
     try {
       if (!this.backendActor) {
         console.warn('Backend actor not initialized');
         return null;
       }
-
       const result = await this.backendActor.createUserProfile(username);
-
       if ('ok' in result) {
         return result.ok;
       } else {
@@ -263,17 +243,14 @@ export class ICPService {
     }
   }
 
-  // Buscar perfil de usuário
   async getUserProfile(userId?: string): Promise<UserProfile | null> {
     try {
       if (!this.backendActor) {
         console.warn('Backend actor not initialized');
         return null;
       }
-
       const principalId = userId ? [Principal.fromText(userId)] : [];
       const result = await this.backendActor.getUserProfile(principalId);
-
       return result[0] || null;
     } catch (error) {
       console.error('Failed to get user profile:', error);
@@ -281,14 +258,12 @@ export class ICPService {
     }
   }
 
-  // Criar quest
   async createQuest(quest: Omit<Quest, 'participants' | 'active'>): Promise<Quest | null> {
     try {
       if (!this.backendActor) {
         console.warn('Backend actor not initialized');
         return null;
       }
-
       const result = await this.backendActor.createQuest(
         quest.id,
         quest.title,
@@ -300,7 +275,6 @@ export class ICPService {
         quest.difficulty,
         quest.sponsor
       );
-
       if ('ok' in result) {
         return result.ok;
       } else {
@@ -313,14 +287,12 @@ export class ICPService {
     }
   }
 
-  // Buscar todas as quests
   async getQuests(): Promise<Quest[]> {
     try {
       if (!this.backendActor) {
         console.warn('Backend actor not initialized, returning empty array');
         return [];
       }
-
       const quests = await this.backendActor.getQuests();
       return quests || [];
     } catch (error) {
@@ -329,14 +301,12 @@ export class ICPService {
     }
   }
 
-  // Buscar leaderboard
   async getLeaderboard(limit = 10): Promise<UserProfile[]> {
     try {
       if (!this.backendActor) {
         console.warn('Backend actor not initialized, returning empty array');
         return [];
       }
-
       const leaderboard = await this.backendActor.getLeaderboard([limit]);
       return leaderboard || [];
     } catch (error) {
@@ -345,13 +315,11 @@ export class ICPService {
     }
   }
 
-  // Health check do backend
   async greetBackend(name: string): Promise<string> {
     try {
       if (!this.backendActor) {
         return 'Backend not connected';
       }
-
       const greeting = await this.backendActor.greet(name);
       return greeting;
     } catch (error) {
@@ -360,7 +328,6 @@ export class ICPService {
     }
   }
 
-  // Verificar se o backend está conectado
   isBackendConnected(): boolean {
     return this.backendActor !== null;
   }

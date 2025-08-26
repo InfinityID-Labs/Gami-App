@@ -15,7 +15,6 @@ import { Zap, Mail, Lock, Eye, EyeOff, Shield } from 'lucide-react-native';
 import { useBlockchain } from '@/contexts/BlockchainContext';
 
 export default function LoginScreen() {
-  // Checa autenticação ICP ao focar na tela (web e mobile)
   React.useEffect(() => {
     const checkAuth = async () => {
       const { icpService } = require('../../services/icpService');
@@ -24,9 +23,7 @@ export default function LoginScreen() {
         router.replace('/(tabs)');
       }
     };
-    checkAuth(); // executa ao montar
-
-    // Web: detecta retorno da aba após login ICP
+    checkAuth();
     if (typeof document !== 'undefined') {
       const onVisibilityChange = () => {
         if (!document.hidden) {
@@ -44,20 +41,16 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { connectWallet } = useBlockchain();
-
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const buttonScaleAnim = useRef(new Animated.Value(1)).current;
   const isMounted = useRef(true);
-
   React.useEffect(() => {
     return () => {
       isMounted.current = false;
     };
   }, []);
-
   const handleLogin = async () => {
     if (!email || !password) {
-      // Shake animation for validation
       Animated.sequence([
         Animated.timing(shakeAnim, { toValue: 10, duration: 100, useNativeDriver: true }),
         Animated.timing(shakeAnim, { toValue: -10, duration: 100, useNativeDriver: true }),

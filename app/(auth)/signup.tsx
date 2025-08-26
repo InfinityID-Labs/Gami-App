@@ -97,9 +97,8 @@ export default function SignupScreen() {
 
     setIsLoading(true);
     try {
-      // Chama o backend para criar o perfil
-      const result = await createUserProfile(formData.username);
-      if ('ok' in result) {
+      const result: unknown = await createUserProfile(formData.username);
+      if (result && typeof result === 'object' && 'ok' in result) {
         Animated.sequence([
           Animated.timing(buttonScaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
           Animated.timing(buttonScaleAnim, { toValue: 1, duration: 100, useNativeDriver: true }),

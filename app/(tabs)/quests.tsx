@@ -61,7 +61,6 @@ export default function QuestsScreen() {
       setUserXP(stats.xp);
       setUserLevel(stats.level);
       setCompletedQuests(stats.completedQuests);
-      // Load live stats from storage
       const storedStats = await AsyncStorage.getItem('liveStats');
       if (storedStats) {
         setLiveStats(JSON.parse(storedStats));

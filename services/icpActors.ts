@@ -1,11 +1,9 @@
 import { Actor, HttpAgent } from '@dfinity/agent';
-// O caminho pode variar conforme build/local, mas este é o padrão para ambiente local DFX
 import { idlFactory as gami_backend_idl } from '../src/declarations/gami_backend/gami_backend.did.js';
 import { idlFactory as token_ledger_idl } from '../src/declarations/token_ledger/token_ledger.did.js';
 import type { Identity } from '@dfinity/agent';
 import type { ActorSubclass, ActorMethod } from '@dfinity/agent';
 
-// Substitua pelos canister IDs reais do deploy
 export const gami_backend_id = 'uxrrr-q7777-77774-qaaaq-cai';
 export const token_ledger_id = 'ucwa4-rx777-77774-qaada-cai';
 

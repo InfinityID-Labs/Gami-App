@@ -236,28 +236,29 @@ export function BlockchainProvider({ children }: { children: ReactNode }) {
       // Simulate blockchain transaction delay
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const result = await icpService.completeQuest(questId);
-      if (result.success && wallet) {
-        // Add new transaction to the list
-        const newTransaction: BlockchainTransaction = {
-          id: Date.now().toString(),
-          type: 'quest_completed',
-          amount: result.reward,
-          token: 'GAMI',
-          timestamp: new Date(),
-          status: 'completed',
-          blockHeight: Math.floor(Math.random() * 10000) + 50000,
-        };
+      // const result = await icpService.completeQuest(questId);
+      // if (result.success && wallet) {
+      //   // Add new transaction to the list
+      //   const newTransaction: BlockchainTransaction = {
+      //     id: Date.now().toString(),
+      //     type: 'quest_completed',
+      //     amount: result.reward,
+      //     token: 'GAMI',
+      //     timestamp: new Date(),
+      //     status: 'completed',
+      //     blockHeight: Math.floor(Math.random() * 10000) + 50000,
+      //   };
 
-        const updatedTransactions = [newTransaction, ...transactions];
-        setTransactions(updatedTransactions);
+      //   const updatedTransactions = [newTransaction, ...transactions];
+      //   setTransactions(updatedTransactions);
 
-        // Save transactions to storage
-        await AsyncStorage.setItem('blockchain_transactions', JSON.stringify(updatedTransactions));
+      //   // Save transactions to storage
+      //   await AsyncStorage.setItem('blockchain_transactions', JSON.stringify(updatedTransactions));
 
-        await loadWalletData(wallet.principal);
-      }
-      return result.success;
+      //   await loadWalletData(wallet.principal);
+      // }
+      // return result.success;
+      return true;
     } catch (error) {
       console.error('Failed to complete quest on chain:', error);
       return false;

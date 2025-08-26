@@ -74,11 +74,11 @@ export default function LeaderboardScreen() {
             id: entry.id.toString(),
             rank: idx + 1,
             username: entry.username,
-            avatar: '', // Adapte se backend fornecer avatar
+            avatar: '',
             xp: Number(entry.xp),
             level: Number(entry.level),
-            streak: 0, // Adapte se backend fornecer streak
-            change: 0, // Adapte se backend fornecer change
+            streak: 0,
+            change: 0,
           }))
         );
       } catch (e) {
