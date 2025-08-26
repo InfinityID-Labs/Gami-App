@@ -11,9 +11,7 @@ import Iter "mo:base/Iter";
 import Nat "mo:base/Nat";
 import Float "mo:base/Float";
 
-// O bloco do ator persistente que contém toda a lógica e estado do canister.
 persistent actor GamiBackend {
-  // Tipos HTTP
   type HttpRequest = {
     method : Text;
     url : Text;
@@ -27,8 +25,6 @@ persistent actor GamiBackend {
     body : Blob;
     streaming_strategy : ?();
   };
-
-  // Tipos auxiliares do projeto
   type QuestId = Text;
   type UserId = Principal;
   type Quest = {
@@ -60,21 +56,17 @@ persistent actor GamiBackend {
     xpEarned : Nat;
     rewardEarned : ?Float;
   };
-  // Variáveis de estado persistentes
   transient let appDeepLinkBase = "gamiapp://auth/callback";
   transient var quests = HashMap.HashMap<QuestId, Quest>(0, Text.equal, Text.hash);
   transient var userProfiles = HashMap.HashMap<UserId, UserProfile>(0, Principal.equal, Principal.hash);
   transient var _questCompletions = HashMap.HashMap<Text, QuestCompletion>(0, Text.equal, Text.hash);
-
-  // A função http_request, agora query, para ser mais segura e não gastar cycles desnecessariamente
-  // Corrigimos o parsing da URL para buscar o principal no fragmento, que é o padrão do ICP.
   public query func http_request(req : HttpRequest) : async HttpResponse {
-    Debug.print("Requisição HTTP recebida para URL: " # req.url);
+    Debug.print("HTTP request received for URL: " # req.url);
 
     // Extrai o 'principal' do fragmento da URL, que é o padrão de retorno do Internet Identity
     let urlParts = Iter.toArray(Text.split(req.url, #char '#'));
     if (urlParts.size() < 2) {
-      Debug.print("Erro: URL sem fragmento para principal.");
+      Debug.print("Error: URL without fragment for principal.");
       return {
         status = 400;
         headers = [];
@@ -93,7 +85,7 @@ persistent actor GamiBackend {
     };
 
     let redirectUrl = appDeepLinkBase # "?principal=" # principal;
-    Debug.print("Redirecionando para: " # redirectUrl);
+    Debug.print("Redirecting to: " # redirectUrl);
 
     return {
       status = 302; // Código HTTP para redirecionamento
@@ -103,7 +95,6 @@ persistent actor GamiBackend {
     };
   };
 
-  // Funções de usuário
   public shared ({ caller }) func createUserProfile(username : Text) : async Result.Result<UserProfile, Text> {
     if (Text.size(username) < 3 or Text.size(username) > 20) {
       return #err("Username must be 3-20 characters");
@@ -137,7 +128,6 @@ persistent actor GamiBackend {
     userProfiles.get(targetId);
   };
 
-  // Funções de Quest
   public func createQuest(
     id : QuestId,
     title : Text,
